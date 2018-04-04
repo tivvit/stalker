@@ -3,8 +3,10 @@ Description=Stalker
 
 [Service]
 User=tivvit
-ExecStart=/home/tivvit/git/stalker/stalker_linux.sh
-ExecStop=pkill ".*stalker_linux.sh"
+Type=simple
+ExecStart=/bin/bash /home/tivvit/git/stalker/stalker_linux.sh
+KillMode=process
+#ExecStop=pkill ".*stalker_linux.sh"
 Restart=always
 RestartSec=3
 
