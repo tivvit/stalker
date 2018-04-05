@@ -1,0 +1,1 @@
+mac based on https://github.com/sindresorhus/active-win
