@@ -13,6 +13,7 @@ def main():
     ap.add_argument("-d", "--day", help="date YY-MM-DD")
     ap.add_argument("-i", "--ignore", type=int,
                     help="ignore events shorter then [s]")
+    ap.add_argument("-s", "--sum", help="sum by keyword")
     args = ap.parse_args()
     if args.day is None:
         print("Please provide the date for analysis\n\n")
@@ -34,16 +35,24 @@ def main():
     stream.sort(key=lambda x: x["timestamp"])
     start = parse_time(stream[0])
     name = get_name(stream[0])
+    source = stream[0].get("source", "")
+    time_sum = datetime.timedelta()
     for i in stream[1:]:
-        if get_name(i) != name:
+        new_name = get_name(i)
+        if new_name != name:
             duration = parse_time(i) - start
+            if args.sum and args.sum in name:
+                time_sum += duration
             if not args.ignore or duration.total_seconds() > args.ignore:
                 print("{} {} {}: {}".format(start.strftime("%H:%M:%S"),
-                                            i.get("source", ""),
+                                            source,
                                             human_time_diff(duration),
-                                            get_name(i)))
+                                            name))
             start = parse_time(i)
             name = get_name(i)
+            source = i.get("source", "")
+    if args.sum:
+        print("{}: {}s".format(args.sum, human_time_diff(time_sum)))
 
 
 def human_time_diff(diff):
