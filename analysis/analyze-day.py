@@ -37,6 +37,7 @@ def main():
     name = get_name(stream[0])
     source = stream[0].get("source", "")
     time_sum = datetime.timedelta()
+    # todo sometimes we are not logging - detect and remove
     for i in stream[1:]:
         new_name = get_name(i)
         if new_name != name:
@@ -51,6 +52,7 @@ def main():
             start = parse_time(i)
             name = get_name(i)
             source = i.get("source", "")
+    # todo close last
     if args.sum:
         print("{}: {}s".format(args.sum, human_time_diff(time_sum)))
 
