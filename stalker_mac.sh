@@ -8,8 +8,8 @@ if [ ! -d "$STALKER_DIR" ]; then
 fi
 
 while true; do
-  FILE=$STALKER_DIR`date +%y-%m-%d`.${PC}.log
-  ERR_FILE=$HOME/stalker/`date +%y-%m-%d`.${PC}.err.log
+  FILE=${STALKER_DIR}`date +%y-%m-%d`.${PC}.log
+  ERR_FILE=${STALKER_DIR}`date +%y-%m-%d`.${PC}.err.log
   /Users/vit.listik/git/stalker/active-win >> ${FILE} 2> ${ERR_FILE}
   sleep 0.5
 done
