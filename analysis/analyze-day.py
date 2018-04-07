@@ -38,7 +38,8 @@ def main():
         if get_name(i) != name:
             duration = parse_time(i) - start
             if not args.ignore or duration.total_seconds() > args.ignore:
-                print("{} {}: {}".format(start.strftime("%H:%M:%S"),
+                print("{} {} {}: {}".format(start.strftime("%H:%M:%S"),
+                                            i.get("source", ""),
                                             human_time_diff(duration),
                                             get_name(i)))
             start = parse_time(i)
@@ -61,7 +62,15 @@ def parse_time(entry):
 
 
 def get_name(entry):
-    return "{}-{}".format(entry.get("proc", ""), entry.get("title", ""))
+    proc = match_proc(entry.get("proc", ""))
+    return "{} {}".format(proc, entry.get("title", ""))
+
+
+def match_proc(name):
+    for i in config.mapping:
+        if i in name:
+            return config.mapping[i]
+    return name
 
 
 def get_machine(log_filepath):
