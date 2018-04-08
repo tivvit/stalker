@@ -19,6 +19,12 @@ def main():
                     help="Ignore next day logs before wake up")
     ap.add_argument("-ns", "--no_stream", action='store_true',
                     help="Ignore stream")
+    ap.add_argument("-k", "--summary_k", type=int,
+                    help="Only k in summary")
+    ap.add_argument("-p", "--summary_pct", type=int,
+                    help="Only > pct in summary")
+    ap.add_argument("-t", "--summary_time", type=int,
+                    help="Only > time [s] in summary")
     args = ap.parse_args()
     day_filename = os.path.join(config.base_path, args.day)
     stream = load_stream(args, day_filename)
@@ -29,7 +35,6 @@ def main():
                                     next_day.strftime("%y-%m-%d"))
         stream += load_stream(args, day_filename, only_morning=True)
     times = process_stream(stream)
-    # todo add next day
     # todo estimate sleep time
     times.sort(key=lambda x: x["start"])
     if not args.no_stream:
@@ -44,7 +49,7 @@ def main():
     print("Unknown: {}".format(human_time_diff(unknown_time)))
     print("-" * 10)
     summary, time_sum = get_summary(args, times)
-    print_summary(logged_time, summary)
+    print_summary(args, logged_time, summary)
     print("-" * 10)
     if args.sum:
         print("{}: {}s".format(args.sum, human_time_diff(time_sum)))
@@ -107,11 +112,14 @@ def load_stream(args, day_filename, only_morning=False):
     return stream
 
 
-def print_summary(logged_time, summary):
+def print_summary(args, logged_time, summary):
+    summary = summary[:args.summary_k] if args.summary_k else summary
     for k, v in summary:
-        # todo top k
-        # todo filter based on time / percent
         perc = (v / logged_time) * 100
+        if args.summary_pct and perc <= args.summary_pct:
+            continue
+        if args.summary_time and v.total_seconds() < args.summary_time:
+            continue
         print("{}: {:.2f}% {}".format(human_time_diff(v), perc, k))
 
 
