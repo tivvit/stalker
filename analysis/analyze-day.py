@@ -58,33 +58,15 @@ def main():
                     "title": "",
                 }
             })
-            times.append({
-                "start": parse_time(item),
-                "end": parse_time(last),
-                "duration": parse_time(last) - parse_time(item),
-                "source": item.get("source", ""),
-                "item": item
-            })
+            times.append(create_record(last, item))
             name = get_name(i)
             item = i
         elif new_name != name:
-            times.append({
-                "start": parse_time(item),
-                "end": parse_time(i),
-                "duration": parse_time(i) - parse_time(item),
-                "source": item.get("source", ""),
-                "item": item
-            })
+            times.append(create_record(i, item))
             name = get_name(i)
             item = i
         last = i
-    times.append({
-        "start": parse_time(item),
-        "end": parse_time(i),
-        "duration": parse_time(i) - parse_time(item),
-        "source": item.get("source", ""),
-        "item": item
-    })
+    times.append(create_record(i, item))
     times.sort(key=lambda x: x["start"])
     time_sum = datetime.timedelta()
     for record in times:
@@ -103,6 +85,16 @@ def main():
     # todo estimate sleep time
     if args.sum:
         print("{}: {}s".format(args.sum, human_time_diff(time_sum)))
+
+
+def create_record(i, item):
+    return {
+        "start": parse_time(item),
+        "end": parse_time(i),
+        "duration": parse_time(i) - parse_time(item),
+        "source": item.get("source", ""),
+        "item": item
+    }
 
 
 def is_short(args, record):
