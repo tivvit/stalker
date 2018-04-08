@@ -17,6 +17,8 @@ def main():
                     help="do not filter out previous days night")
     ap.add_argument("-ind", "--ignore_next_day", action='store_true',
                     help="Ignore next day logs before wake up")
+    ap.add_argument("-ns", "--no_stream", action='store_true',
+                    help="Ignore stream")
     args = ap.parse_args()
     day_filename = os.path.join(config.base_path, args.day)
     stream = load_stream(args, day_filename)
@@ -30,10 +32,11 @@ def main():
     # todo add next day
     # todo estimate sleep time
     times.sort(key=lambda x: x["start"])
-    print("-" * 10)
-    print("STREAM")
-    print("-" * 10)
-    print_stream(args, times)
+    if not args.no_stream:
+        print("-" * 10)
+        print("STREAM")
+        print("-" * 10)
+        print_stream(args, times)
     print("-" * 10)
     print("SUMMARY")
     logged_time, unknown_time = logged_overall(args, times)
