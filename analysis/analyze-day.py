@@ -22,25 +22,35 @@ def main():
         ap.print_help()
         sys.exit(1)
     day_filename = os.path.join(config.base_path, args.day)
-    stream = []
-    for i in glob(day_filename + "*.log"):
-        if "err" not in i:
-            machine = get_machine(i)
-            for l in open(i):
-                try:
-                    s = json.loads(l)
-                    s["source"] = machine
-                    stream.append(s)
-                except Exception as e:
-                    pass
-                    # print("invalid json in {}, {}".format(i, e))
-    stream.sort(key=lambda x: x["timestamp"])
+    stream = load_stream(day_filename)
+    times = process_stream(stream)
+    # todo add next day
+    # todo estimate sleep time
+    times.sort(key=lambda x: x["start"])
+    print("-" * 10)
+    print("STREAM")
+    print("-" * 10)
+    print_stream(args, times)
+    print("-" * 10)
+    print("SUMMARY")
+    logged_time, unknown_time = logged_overall(times)
+    print("Logged: {}".format(human_time_diff(logged_time)))
+    print("Unknown: {}".format(human_time_diff(unknown_time)))
+    print("-" * 10)
+    summary, time_sum = get_summary(args, times)
+    print_summary(logged_time, summary)
+    print("-" * 10)
+    if args.sum:
+        print("{}: {}s".format(args.sum, human_time_diff(time_sum)))
+
+
+def process_stream(stream):
     name = get_name(stream[0])
     item = stream[0]
     times = []
     last = None
     i = None
-    # todo support multiple sources
+    # todo support multiple sources (overlap)
     for i in stream[1:]:
         new_name = get_name(i)
         time_skip_val = i["timestamp"] - last["timestamp"] if last else 0
@@ -67,39 +77,40 @@ def main():
             item = i
         last = i
     times.append(create_record(i, item))
-    # todo add next day
-    # todo estimate sleep time
-    times.sort(key=lambda x: x["start"])
+    return times
+
+
+def load_stream(day_filename):
+    stream = []
+    for i in glob(day_filename + "*.log"):
+        if "err" not in i:
+            machine = get_machine(i)
+            for l in open(i):
+                try:
+                    s = json.loads(l)
+                    s["source"] = machine
+                    stream.append(s)
+                except Exception as e:
+                    pass
+                    # print("invalid json in {}, {}".format(i, e))
+    stream.sort(key=lambda x: x["timestamp"])
+    return stream
+
+
+def print_summary(logged_time, summary):
+    for k, v in summary:
+        # todo top k
+        # todo filter based on time / percent
+        perc = (v / logged_time) * 100
+        print("{}: {:.2f}% {}".format(human_time_diff(v), perc, k))
+
+
+def get_summary(args, times):
+    summary = {}
     time_sum = datetime.timedelta()
-    print("-" * 10)
-    print("STREAM")
-    print("-" * 10)
     for record in times:
         if args.sum and args.sum in get_name(record["item"]):
             time_sum += record["duration"]
-        start_morning = is_morning(record)
-        short = is_short(args, record)
-        if (not args.ignore or not short) and (
-                args.no_delete_morning or not start_morning):
-            print("{} {} {}: {}".format(
-                record["start"].strftime("%H:%M:%S"),
-                record["source"],
-                human_time_diff(record["duration"]),
-                get_name(record["item"])))
-    print("-" * 10)
-    print("SUMMARY")
-    logged_time = datetime.timedelta()
-    unknown_time = datetime.timedelta()
-    for record in times:
-        if not is_none(record):
-            logged_time += record["duration"]
-        else:
-            unknown_time += record["duration"]
-    print("Logged: {}".format(human_time_diff(logged_time)))
-    print("Unknown: {}".format(human_time_diff(unknown_time)))
-    print("-" * 10)
-    summary = {}
-    for record in times:
         start_morning = is_morning(record)
         if is_none(record):
             continue
@@ -109,12 +120,31 @@ def main():
                 summary[name] = datetime.timedelta()
             summary[name] += record["duration"]
     summary = sorted(summary.items(), key=lambda x: x[1], reverse=True)
-    for k, v in summary:
-        perc = (v / logged_time) * 100
-        print("{}: {:.2f}% {}".format(human_time_diff(v), perc, k))
-    print("-" * 10)
-    if args.sum:
-        print("{}: {}s".format(args.sum, human_time_diff(time_sum)))
+    return summary, time_sum
+
+
+def print_stream(args, times):
+    for record in times:
+        start_morning = is_morning(record)
+        short = is_short(args, record)
+        if (not args.ignore or not short) and (
+                args.no_delete_morning or not start_morning):
+            print("{} {} {}: {}".format(
+                record["start"].strftime("%H:%M:%S"),
+                record["source"],
+                human_time_diff(record["duration"]),
+                get_name(record["item"])))
+
+
+def logged_overall(times):
+    logged_time = datetime.timedelta()
+    unknown_time = datetime.timedelta()
+    for record in times:
+        if not is_none(record):
+            logged_time += record["duration"]
+        else:
+            unknown_time += record["duration"]
+    return logged_time, unknown_time
 
 
 def is_none(r):
