@@ -44,7 +44,7 @@ def main():
         print_stream(args, times)
     print("-" * 10)
     print("SUMMARY")
-    logged_time, unknown_time = logged_overall(args, times)
+    logged_time, unknown_time = logged_overall(times)
     print("Logged: {}".format(human_time_diff(logged_time)))
     print("Unknown: {}".format(human_time_diff(unknown_time)))
     print("-" * 10)
@@ -150,7 +150,7 @@ def print_stream(args, times):
                 get_name(record["item"])))
 
 
-def logged_overall(args, times):
+def logged_overall(times):
     logged_time = datetime.timedelta()
     unknown_time = datetime.timedelta()
     for record in times:
