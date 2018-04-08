@@ -10,17 +10,13 @@ import datetime
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("-d", "--day", help="date YY-MM-DD")
+    ap.add_argument("-d", "--day", help="date YY-MM-DD", required=True)
     ap.add_argument("-i", "--ignore", type=int,
                     help="ignore events shorter then [s]")
     ap.add_argument("-s", "--sum", help="sum by keyword")
     ap.add_argument("-ndm", "--no_delete_morning", action='store_true',
                     help="do not filter out previous days night")
     args = ap.parse_args()
-    if args.day is None:
-        print("Please provide the date for analysis\n\n")
-        ap.print_help()
-        sys.exit(1)
     day_filename = os.path.join(config.base_path, args.day)
     stream = load_stream(day_filename)
     times = process_stream(stream)
