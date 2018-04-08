@@ -29,7 +29,7 @@ def main():
     print_stream(args, times)
     print("-" * 10)
     print("SUMMARY")
-    logged_time, unknown_time = logged_overall(times)
+    logged_time, unknown_time = logged_overall(args, times)
     print("Logged: {}".format(human_time_diff(logged_time)))
     print("Unknown: {}".format(human_time_diff(unknown_time)))
     print("-" * 10)
@@ -132,12 +132,16 @@ def print_stream(args, times):
                 get_name(record["item"])))
 
 
-def logged_overall(times):
+def logged_overall(args, times):
     logged_time = datetime.timedelta()
     unknown_time = datetime.timedelta()
     for record in times:
-        if not is_none(record):
-            logged_time += record["duration"]
+        start_morning = is_morning(record)
+        if args.no_delete_morning or not start_morning:
+            if is_none(record):
+                unknown_time += record["duration"]
+            else:
+                logged_time += record["duration"]
         else:
             unknown_time += record["duration"]
     return logged_time, unknown_time
