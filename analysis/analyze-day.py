@@ -67,8 +67,13 @@ def main():
             item = i
         last = i
     times.append(create_record(i, item))
+    # todo add next day
+    # todo estimate sleep time
     times.sort(key=lambda x: x["start"])
     time_sum = datetime.timedelta()
+    print("-" * 10)
+    print("STREAM")
+    print("-" * 10)
     for record in times:
         if args.sum and args.sum in get_name(record["item"]):
             time_sum += record["duration"]
@@ -81,10 +86,40 @@ def main():
                 record["source"],
                 human_time_diff(record["duration"]),
                 get_name(record["item"])))
-    # todo add next day
-    # todo estimate sleep time
+    print("-" * 10)
+    print("SUMMARY")
+    logged_time = datetime.timedelta()
+    unknown_time = datetime.timedelta()
+    for record in times:
+        if not is_none(record):
+            logged_time += record["duration"]
+        else:
+            unknown_time += record["duration"]
+    print("Logged: {}".format(human_time_diff(logged_time)))
+    print("Unknown: {}".format(human_time_diff(unknown_time)))
+    print("-" * 10)
+    summary = {}
+    for record in times:
+        start_morning = is_morning(record)
+        if is_none(record):
+            continue
+        if args.no_delete_morning or not start_morning:
+            name = get_name(record["item"])
+            if name not in summary:
+                summary[name] = datetime.timedelta()
+            summary[name] += record["duration"]
+    summary = sorted(summary.items(), key=lambda x: x[1], reverse=True)
+    for k, v in summary:
+        perc = (v / logged_time) * 100
+        print("{}: {:.2f}% {}".format(human_time_diff(v), perc, k))
+    print("-" * 10)
     if args.sum:
         print("{}: {}s".format(args.sum, human_time_diff(time_sum)))
+
+
+def is_none(r):
+    return r["source"] == "" and r["item"]["proc"] == "None" and \
+           r["item"]["title"] == ""
 
 
 def create_record(i, item):
