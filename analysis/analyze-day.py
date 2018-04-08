@@ -14,6 +14,8 @@ def main():
     ap.add_argument("-i", "--ignore", type=int,
                     help="ignore events shorter then [s]")
     ap.add_argument("-s", "--sum", help="sum by keyword")
+    ap.add_argument("-ndm", "--no_delete_morning", action='store_true',
+                    help="do not filter out previous days night")
     args = ap.parse_args()
     if args.day is None:
         print("Please provide the date for analysis\n\n")
@@ -33,34 +35,88 @@ def main():
                     pass
                     # print("invalid json in {}, {}".format(i, e))
     stream.sort(key=lambda x: x["timestamp"])
-    start = parse_time(stream[0])
     name = get_name(stream[0])
-    source = stream[0].get("source", "")
-    time_sum = datetime.timedelta()
-    # todo sometimes we are not logging - detect and remove
+    item = stream[0]
+    times = []
+    last = None
+    i = None
+    # todo support multiple sources
     for i in stream[1:]:
         new_name = get_name(i)
-        if new_name != name:
-            duration = parse_time(i) - start
-            if args.sum and args.sum in name:
-                time_sum += duration
-            if not args.ignore or duration.total_seconds() > args.ignore:
-                print("{} {} {}: {}".format(start.strftime("%H:%M:%S"),
-                                            source,
-                                            human_time_diff(duration),
-                                            name))
-            start = parse_time(i)
+        time_skip_val = i["timestamp"] - last["timestamp"] if last else 0
+        time_skip = time_skip_val > 5
+        if time_skip:
+            # print("loggingg skip", time_skip_val)
+            times.append({
+                "start": parse_time(last),
+                "end": parse_time(i),
+                "duration": parse_time(i) - parse_time(last),
+                "source": "",
+                "item": {
+                    "timestamp": last["timestamp"],
+                    "proc": "None",
+                    "title": "",
+                }
+            })
+            times.append({
+                "start": parse_time(item),
+                "end": parse_time(last),
+                "duration": parse_time(last) - parse_time(item),
+                "source": item.get("source", ""),
+                "item": item
+            })
             name = get_name(i)
-            source = i.get("source", "")
-    # todo close last
+            item = i
+        elif new_name != name:
+            times.append({
+                "start": parse_time(item),
+                "end": parse_time(i),
+                "duration": parse_time(i) - parse_time(item),
+                "source": item.get("source", ""),
+                "item": item
+            })
+            name = get_name(i)
+            item = i
+        last = i
+    times.append({
+        "start": parse_time(item),
+        "end": parse_time(i),
+        "duration": parse_time(i) - parse_time(item),
+        "source": item.get("source", ""),
+        "item": item
+    })
+    times.sort(key=lambda x: x["start"])
+    time_sum = datetime.timedelta()
+    for record in times:
+        if args.sum and args.sum in get_name(record["item"]):
+            time_sum += record["duration"]
+        start_morning = is_morning(record)
+        short = is_short(args, record)
+        if (not args.ignore or not short) and (
+                args.no_delete_morning or not start_morning):
+            print("{} {} {}: {}".format(
+                record["start"].strftime("%H:%M:%S"),
+                record["source"],
+                human_time_diff(record["duration"]),
+                get_name(record["item"])))
+    # todo add next day
+    # todo estimate sleep time
     if args.sum:
         print("{}: {}s".format(args.sum, human_time_diff(time_sum)))
+
+
+def is_short(args, record):
+    return args.ignore and record["duration"].total_seconds() < args.ignore
+
+
+def is_morning(record):
+    return record["start"].time() < config.morning
 
 
 def human_time_diff(diff):
     h = diff.seconds // 60 // 60
     m = diff.seconds // 60 - (h * 60)
-    s = diff.seconds - (m * 60)
+    s = diff.seconds - ((h * 60 * 60) + (m * 60))
     if h > 0:
         return "{}h {}m {}s".format(h, m, s)
     if m > 0:

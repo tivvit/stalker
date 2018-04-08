@@ -1,5 +1,7 @@
 from os.path import expanduser
 
+import datetime
+
 base_path = expanduser("~/stalker/")
 
 mapping = {
@@ -7,3 +9,5 @@ mapping = {
     "terminal": "terminal",
     "pycharm": "pycharm",
 }
+
+morning = datetime.time(hour=5)
