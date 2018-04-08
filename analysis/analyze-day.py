@@ -1,11 +1,10 @@
 import argparse
+import datetime
 import json
 import os
-import sys
 from glob import glob
 
 import config
-import datetime
 
 
 def main():
@@ -18,7 +17,7 @@ def main():
                     help="do not filter out previous days night")
     args = ap.parse_args()
     day_filename = os.path.join(config.base_path, args.day)
-    stream = load_stream(day_filename)
+    stream = load_stream(args, day_filename)
     times = process_stream(stream)
     # todo add next day
     # todo estimate sleep time
@@ -76,7 +75,7 @@ def process_stream(stream):
     return times
 
 
-def load_stream(day_filename):
+def load_stream(args, day_filename):
     stream = []
     for i in glob(day_filename + "*.log"):
         if "err" not in i:
@@ -85,7 +84,9 @@ def load_stream(day_filename):
                 try:
                     s = json.loads(l)
                     s["source"] = machine
-                    stream.append(s)
+                    start_morning = is_morning(parse_time(s))
+                    if args.no_delete_morning or not start_morning:
+                        stream.append(s)
                 except Exception as e:
                     pass
                     # print("invalid json in {}, {}".format(i, e))
@@ -107,24 +108,20 @@ def get_summary(args, times):
     for record in times:
         if args.sum and args.sum in get_name(record["item"]):
             time_sum += record["duration"]
-        start_morning = is_morning(record)
         if is_none(record):
             continue
-        if args.no_delete_morning or not start_morning:
-            name = get_name(record["item"])
-            if name not in summary:
-                summary[name] = datetime.timedelta()
-            summary[name] += record["duration"]
+        name = get_name(record["item"])
+        if name not in summary:
+            summary[name] = datetime.timedelta()
+        summary[name] += record["duration"]
     summary = sorted(summary.items(), key=lambda x: x[1], reverse=True)
     return summary, time_sum
 
 
 def print_stream(args, times):
     for record in times:
-        start_morning = is_morning(record)
         short = is_short(args, record)
-        if (not args.ignore or not short) and (
-                args.no_delete_morning or not start_morning):
+        if not args.ignore or not short:
             print("{} {} {}: {}".format(
                 record["start"].strftime("%H:%M:%S"),
                 record["source"],
@@ -136,14 +133,10 @@ def logged_overall(args, times):
     logged_time = datetime.timedelta()
     unknown_time = datetime.timedelta()
     for record in times:
-        start_morning = is_morning(record)
-        if args.no_delete_morning or not start_morning:
-            if is_none(record):
-                unknown_time += record["duration"]
-            else:
-                logged_time += record["duration"]
-        else:
+        if is_none(record):
             unknown_time += record["duration"]
+        else:
+            logged_time += record["duration"]
     return logged_time, unknown_time
 
 
@@ -166,8 +159,8 @@ def is_short(args, record):
     return args.ignore and record["duration"].total_seconds() < args.ignore
 
 
-def is_morning(record):
-    return record["start"].time() < config.morning
+def is_morning(t):
+    return t.time() < config.morning
 
 
 def human_time_diff(diff):
