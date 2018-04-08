@@ -15,9 +15,17 @@ def main():
     ap.add_argument("-s", "--sum", help="sum by keyword")
     ap.add_argument("-ndm", "--no_delete_morning", action='store_true',
                     help="do not filter out previous days night")
+    ap.add_argument("-ind", "--ignore_next_day", action='store_true',
+                    help="Ignore next day logs before wake up")
     args = ap.parse_args()
     day_filename = os.path.join(config.base_path, args.day)
     stream = load_stream(args, day_filename)
+    if not args.ignore_next_day:
+        next_day = datetime.datetime.strptime(args.day, "%y-%m-%d") + \
+                   datetime.timedelta(days=1)
+        day_filename = os.path.join(config.base_path,
+                                    next_day.strftime("%y-%m-%d"))
+        stream += load_stream(args, day_filename, only_morning=True)
     times = process_stream(stream)
     # todo add next day
     # todo estimate sleep time
@@ -75,7 +83,7 @@ def process_stream(stream):
     return times
 
 
-def load_stream(args, day_filename):
+def load_stream(args, day_filename, only_morning=False):
     stream = []
     for i in glob(day_filename + "*.log"):
         if "err" not in i:
@@ -85,7 +93,9 @@ def load_stream(args, day_filename):
                     s = json.loads(l)
                     s["source"] = machine
                     start_morning = is_morning(parse_time(s))
-                    if args.no_delete_morning or not start_morning:
+                    if (only_morning and start_morning) or (
+                            not only_morning and (args.no_delete_morning
+                                                  or not start_morning)):
                         stream.append(s)
                 except Exception as e:
                     pass
