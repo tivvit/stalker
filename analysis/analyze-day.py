@@ -9,15 +9,17 @@ import config
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("-d", "--day", help="date YY-MM-DD", required=True)
+    ap.add_argument("-d", "--day", help="date YY-MM-DD")
+    ap.add_argument("-db", "--day_back", type=int, default=0,
+                    help="how many days before today")
     ap.add_argument("-i", "--ignore", type=int,
                     help="ignore events shorter then [s]")
-    ap.add_argument("-s", "--sum", help="sum by keyword")
+    ap.add_argument("-sk", "--sum", help="sum by keyword")
     ap.add_argument("-ndm", "--no_delete_morning", action='store_true',
                     help="do not filter out previous days night")
     ap.add_argument("-ind", "--ignore_next_day", action='store_true',
                     help="Ignore next day logs before wake up")
-    ap.add_argument("-ns", "--no_stream", action='store_true',
+    ap.add_argument("-s", "--stream", action='store_true',
                     help="Ignore stream")
     ap.add_argument("-k", "--summary_k", type=int,
                     help="Only k in summary")
@@ -26,10 +28,16 @@ def main():
     ap.add_argument("-t", "--summary_time", type=int,
                     help="Only > time [s] in summary")
     args = ap.parse_args()
-    day_filename = os.path.join(config.base_path, args.day)
+    date = args.day
+    if not args.day:
+        date = datetime.datetime.strftime(
+            datetime.datetime.now() - datetime.timedelta(days=args.day_back),
+            "%y-%m-%d")
+    print("Day {}".format(date))
+    day_filename = os.path.join(config.base_path, date)
     stream = load_stream(args, day_filename)
     if not args.ignore_next_day:
-        next_day = datetime.datetime.strptime(args.day, "%y-%m-%d") + \
+        next_day = datetime.datetime.strptime(date, "%y-%m-%d") + \
                    datetime.timedelta(days=1)
         day_filename = os.path.join(config.base_path,
                                     next_day.strftime("%y-%m-%d"))
@@ -37,7 +45,7 @@ def main():
     times = process_stream(stream)
     # todo estimate sleep time
     times.sort(key=lambda x: x["start"])
-    if not args.no_stream:
+    if args.stream:
         print("-" * 10)
         print("STREAM")
         print("-" * 10)
