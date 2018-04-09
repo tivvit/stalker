@@ -30,8 +30,12 @@ def main():
     args = ap.parse_args()
     date = args.day
     if not args.day:
+        now = datetime.datetime.now()
+        # working over midnight - want to see "today"
+        if now.time() < config.morning:
+            now -= datetime.timedelta(days=1)
         date = datetime.datetime.strftime(
-            datetime.datetime.now() - datetime.timedelta(days=args.day_back),
+            now - datetime.timedelta(days=args.day_back),
             "%y-%m-%d")
     print("Day {}".format(date))
     day_filename = os.path.join(config.base_path, date)
