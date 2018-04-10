@@ -23,7 +23,7 @@ def main():
                     help="Ignore stream")
     ap.add_argument("-k", "--summary_k", type=int,
                     help="Only k in summary")
-    ap.add_argument("-p", "--summary_pct", type=int,
+    ap.add_argument("-p", "--summary_pct", type=int, default=1,
                     help="Only > pct in summary")
     ap.add_argument("-t", "--summary_time", type=int,
                     help="Only > time [s] in summary")
