@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-find ~/stalker/ -mtime +1 -print -exec gzip {} \;
+find ~/stalker/ -name "*.log" -mtime +0 -print -exec gzip {} \;
