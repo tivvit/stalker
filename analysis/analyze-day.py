@@ -3,6 +3,7 @@ import datetime
 import json
 import os
 from glob import glob
+import gzip
 
 import config
 
@@ -105,10 +106,14 @@ def process_stream(stream):
 
 def load_stream(args, day_filename, only_morning=False):
     stream = []
-    for i in glob(day_filename + "*.log"):
+    for i in glob(day_filename + "*.log*"):
         if "err" not in i:
             machine = get_machine(i)
-            for l in open(i):
+            if i.endswith(".gz"):
+                open_file = gzip.open(i)
+            else:
+                open_file = open(i)
+            for l in open_file:
                 try:
                     s = json.loads(l)
                     s["source"] = machine
