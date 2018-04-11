@@ -14,6 +14,7 @@ while true; do
   ERR_FILE=${STALKER_DIR}`date +%y-%m-%d`.${PC}.err.log
   TITLE=`xdotool getactivewindow getwindowname 2>> $ERR_FILE`
   PROC=`ps -fp $(xdotool getactivewindow getwindowpid) -o cmd= 2>> $ERR_FILE`
-  echo "{\"timestamp\": `date +%s.%N`, \"title\": \"$TITLE\", \"proc\":\"$PROC\"}" >> ${FILE}
+  IDLETIME=`xprintidle`
+  echo "{\"timestamp\": `date +%s.%N`, \"title\": \"$TITLE\", \"proc\":\"$PROC\" \"idletime\": \"${IDLETIME}\"}" >> ${FILE}
   sleep 0.5
 done
