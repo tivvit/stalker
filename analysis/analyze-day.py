@@ -3,7 +3,6 @@ import datetime
 import json
 import os
 from glob import glob
-import gzip
 
 import config
 
@@ -47,6 +46,9 @@ def main():
         day_filename = os.path.join(config.base_path,
                                     next_day.strftime("%y-%m-%d"))
         stream += load_stream(args, day_filename, only_morning=True)
+    if not stream:
+        print("No data found")
+        return
     times = process_stream(stream)
     # todo estimate sleep time
     times.sort(key=lambda x: x["start"])
@@ -106,14 +108,10 @@ def process_stream(stream):
 
 def load_stream(args, day_filename, only_morning=False):
     stream = []
-    for i in glob(day_filename + "*.log*"):
+    for i in glob(day_filename + "*.log"):
         if "err" not in i:
             machine = get_machine(i)
-            if i.endswith(".gz"):
-                open_file = gzip.open(i)
-            else:
-                open_file = open(i)
-            for l in open_file:
+            for l in open(i):
                 try:
                     s = json.loads(l)
                     s["source"] = machine
