@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+    <string>org.tivvit.stalker-sync</string>
+  <key>ProgramArguments</key>
+    <array>
+      <string>/Users/vit.listik/git/stalker/sync.sh</string>
+      <string>ntb</string>
+    </array>
+  <key>StartInterval</key>
+    <integer>60</integer>
+  <key>UserName</key>
+    <string>vit.listik</string>
+  <key>RunAtLoad</key>
+    <true/>
+  <!--
+  <key>StandardErrorPath</key>
+    <string>/tmp/foo.err</string>
+  <key>StandardOutPath</key>
+    <string>/tmp/foo.out</string>
+  -->
+</dict>
+</plist>

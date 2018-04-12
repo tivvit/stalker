@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -e
+PATH=$PATH:/usr/local/bin
 PC="$1"
 # backup
 rclone copy ~/stalker g:stalker --exclude "`date +%y-%m-%d`.*"
