@@ -76,31 +76,33 @@ def process_stream(stream):
     times = []
     last = None
     i = None
+    cnt = 0
+    idle_sum = 0
     # todo support multiple sources (overlap)
     for i in stream[1:]:
         new_name = get_name(i)
         time_skip_val = i["timestamp"] - last["timestamp"] if last else 0
         time_skip = time_skip_val > 5
+        found = False
+        cnt += 1
+        idle_sum += int(i.get("idletime", 0))
         if time_skip:
-            # print("loggingg skip", time_skip_val)
-            times.append({
-                "start": parse_time(last),
-                "end": parse_time(i),
-                "duration": parse_time(i) - parse_time(last),
-                "source": "",
-                "item": {
-                    "timestamp": last["timestamp"],
-                    "proc": "None",
-                    "title": "",
-                }
-            })
-            times.append(create_record(last, item))
-            name = get_name(i)
-            item = i
+            # add time skip
+            times.append(create_record(i, last, data={
+                "timestamp": last["timestamp"],
+                "proc": "None",
+                "title": "",
+            }))
+            times.append(create_record(last, item, cnt=cnt, idle=idle_sum))
+            found = True
         elif new_name != name:
-            times.append(create_record(i, item))
+            times.append(create_record(i, item, cnt=cnt, idle=idle_sum))
+            found = True
+        if found:
             name = get_name(i)
             item = i
+            cnt = 0
+            idle_sum = 0
         last = i
     times.append(create_record(i, item))
     return times
@@ -129,13 +131,27 @@ def load_stream(args, day_filename, only_morning=False):
 
 def print_summary(args, logged_time, summary):
     summary = summary[:args.summary_k] if args.summary_k else summary
+    print("time\tpercent\tchunks\tavg chunk\tavg idle\tname")
     for k, v in summary:
-        perc = (v / logged_time) * 100
+        duration = v.get("duration", datetime.timedelta())
+        perc = (duration / logged_time) * 100
         if args.summary_pct and perc <= args.summary_pct:
             continue
-        if args.summary_time and v.total_seconds() < args.summary_time:
+        if args.summary_time and duration.total_seconds() < args.summary_time:
             continue
-        print("{}: {:.2f}% {}".format(human_time_diff(v), perc, k))
+        # fmt_str = "{}: {:.2f}% chunks: {} | avg chunk: {} |" \
+        #           " avg idle: {} | name: {}"
+        fmt_str = "{}\t{:.2f}%\t{}\t{: <9}\t{: <8}\t{}"
+        print(fmt_str.format(
+            human_time_diff(duration),
+            perc,
+            v.get("groups_cnt", 1),
+            human_time_diff(duration / v.get("groups_cnt", 1)),
+            human_time_diff(
+                datetime.timedelta(milliseconds=
+                                   v.get("idle_sum", 0) / v.get("cnt", 1))),
+            k
+        ))
 
 
 def get_summary(args, times):
@@ -148,9 +164,20 @@ def get_summary(args, times):
             continue
         name = get_name(record["item"])
         if name not in summary:
-            summary[name] = datetime.timedelta()
-        summary[name] += record["duration"]
-    summary = sorted(summary.items(), key=lambda x: x[1], reverse=True)
+            summary[name] = {
+                "duration": datetime.timedelta(),
+                "cnt": 0,
+                "groups_cnt": 0,
+                "idle_sum": 0,
+            }
+        summary[name]["duration"] += record["duration"]
+        summary[name]["cnt"] += record.get("cnt", 1)
+        summary[name]["groups_cnt"] += 1
+        summary[name]["idle_sum"] += record.get("idle_sum", 0)
+    summary = sorted(summary.items(),
+                     key=lambda x: x[1].get("duration",
+                                            datetime.timedelta()),
+                     reverse=True)
     return summary, time_sum
 
 
@@ -181,13 +208,17 @@ def is_none(r):
            r["item"]["title"] == ""
 
 
-def create_record(i, item):
+def create_record(end, start, data=None, cnt=1, idle=0):
+    if not data:
+        data = start
     return {
-        "start": parse_time(item),
-        "end": parse_time(i),
-        "duration": parse_time(i) - parse_time(item),
-        "source": item.get("source", ""),
-        "item": item
+        "start": parse_time(start),
+        "end": parse_time(end),
+        "duration": parse_time(end) - parse_time(start),
+        "source": data.get("source", ""),
+        "item": data,
+        "cnt": cnt,
+        "idle_sum": idle,
     }
 
 
