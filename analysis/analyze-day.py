@@ -27,6 +27,8 @@ def main():
                     help="Only > pct in summary")
     ap.add_argument("-t", "--summary_time", type=int,
                     help="Only > time [s] in summary")
+    ap.add_argument("-idl", "--idle", type=int, default=60 * 10 ** 3,
+                    help="> x ms is considered idle")
     args = ap.parse_args()
     date = args.day
     if not args.day:
@@ -49,7 +51,7 @@ def main():
     if not stream:
         print("No data found")
         return
-    times = process_stream(stream)
+    times = process_stream(stream, args)
     # todo estimate sleep time
     times.sort(key=lambda x: x["start"])
     if args.stream:
@@ -70,14 +72,18 @@ def main():
         print("{}: {}s".format(args.sum, human_time_diff(time_sum)))
 
 
-def process_stream(stream):
-    name = get_name(stream[0])
-    item = stream[0]
+def process_stream(stream, args):
+    first = stream[0]
+    name = get_name(first)
+    item = first
     times = []
     last = None
     i = None
     cnt = 0
     idle_sum = 0
+    last_idletime = int(first.get("idletime", 0))
+    active = True if last_idletime < args.idle else False
+    last_active = first
     # todo support multiple sources (overlap)
     for i in stream[1:]:
         new_name = get_name(i)
@@ -85,7 +91,28 @@ def process_stream(stream):
         time_skip = time_skip_val > 5
         found = False
         cnt += 1
-        idle_sum += int(i.get("idletime", 0))
+        idletime = int(i.get("idletime", 0))
+        if active:
+            if idletime > args.idle:
+                # todo may be time skip
+                times.append(create_record(last_active, item, cnt=cnt,
+                                           idle=idle_sum))
+                found = True
+                active = False
+        else:
+            if idletime < last_idletime:
+                times.append(create_record(i, last_active, idle=idle_sum, data={
+                    "timestamp": last["timestamp"],
+                    "proc": "Idle",
+                    "title": "",
+                }))
+                found=True
+                active = True
+        if idletime < last_idletime:
+            last_active = i
+        last_idletime = idletime
+        idle_sum += idletime
+        # todo take active in to account
         if time_skip:
             # add time skip
             times.append(create_record(i, last, data={
@@ -131,7 +158,7 @@ def load_stream(args, day_filename, only_morning=False):
 
 def print_summary(args, logged_time, summary):
     summary = summary[:args.summary_k] if args.summary_k else summary
-    print("time\tpercent\tchunks\tavg chunk\tavg idle\tname")
+    print("{: <12}\tpercent\tchunks\tavg chunk\tavg idle\tname".format("time"))
     for k, v in summary:
         duration = v.get("duration", datetime.timedelta())
         perc = (duration / logged_time) * 100
@@ -141,7 +168,7 @@ def print_summary(args, logged_time, summary):
             continue
         # fmt_str = "{}: {:.2f}% chunks: {} | avg chunk: {} |" \
         #           " avg idle: {} | name: {}"
-        fmt_str = "{}\t{:.2f}%\t{}\t{: <9}\t{: <8}\t{}"
+        fmt_str = "{: <12}\t{:.2f}%\t{}\t{: <9}\t{: <8}\t{}"
         print(fmt_str.format(
             human_time_diff(duration),
             perc,
