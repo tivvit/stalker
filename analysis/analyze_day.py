@@ -4,7 +4,10 @@ import json
 import os
 from glob import glob
 
-import config
+try:
+    from . import config
+except:
+    import config
 
 
 def main():
@@ -42,17 +45,17 @@ def main():
             "%y-%m-%d")
     print("Day {}".format(date))
     day_filename = os.path.join(config.base_path, date)
-    stream = load_stream(args, day_filename)
+    stream = load_stream(day_filename, no_delete_morning=args.no_delete_morning)
     if not args.ignore_next_day:
         next_day = datetime.datetime.strptime(date, "%y-%m-%d") + \
                    datetime.timedelta(days=1)
         day_filename = os.path.join(config.base_path,
                                     next_day.strftime("%y-%m-%d"))
-        stream += load_stream(args, day_filename, only_morning=True)
+        stream += load_stream(day_filename, only_morning=True)
     if not stream:
         print("No data found")
         return
-    times = process_stream(stream, args)
+    times = process_stream(stream, idle_time=args.idle)
     # todo estimate sleep time
     times.sort(key=lambda x: x["start"])
     if args.stream:
@@ -84,7 +87,7 @@ def json_serialization(o):
         return o.total_seconds()
 
 
-def process_stream(stream, args):
+def process_stream(stream, idle_time=60 * 10 ** 3):
     times = []
     info = {}
     sources = set()
@@ -102,7 +105,7 @@ def process_stream(stream, args):
                 "cnt": 0,
                 "idle_sum": 0,
                 "last_idletime": idletime,
-                "active": True if idletime < args.idle else False,
+                "active": True if idletime < idle_time else False,
                 "last_active": i,
             }
             continue
@@ -141,7 +144,7 @@ def process_stream(stream, args):
                 times.append(create_record(ci["item"], i, cnt=ci["cnt"],
                                            idle_sum=ci["idle_sum"]))
                 refresh = True
-            if idletime > args.idle:
+            if idletime > idle_time:
                 # Add activity before idle
                 times.append(create_record(ci["item"],
                                            ci["last_active"],
@@ -172,7 +175,7 @@ def process_stream(stream, args):
     return times
 
 
-def load_stream(args, day_filename, only_morning=False):
+def load_stream(day_filename, no_delete_morning=False, only_morning=False):
     stream = []
     for i in glob(day_filename + "*.log"):
         if "err" not in i:
@@ -183,7 +186,7 @@ def load_stream(args, day_filename, only_morning=False):
                     s["source"] = machine
                     start_morning = is_morning(parse_time(s))
                     if (only_morning and start_morning) or (
-                            not only_morning and (args.no_delete_morning
+                            not only_morning and (no_delete_morning
                                                   or not start_morning)):
                         stream.append(s)
                 except Exception as e:

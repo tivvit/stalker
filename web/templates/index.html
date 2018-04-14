@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/style.css') }}">
+    <title>Stalker</title>
+</head>
+
+<body>
+{% for record in data %}
+    <div class="record {% if record['idle'] %}idle{% endif %}">
+        <div class="prop start">{{ record["start"].strftime("%H:%M:%S") }}</div>
+        <div class="prop duration">{{ record["duration"] | timediff }}</div>
+        <div class="prop source">{{ record["source"] }}</div>
+        <div class="prop proc">{{ record["item"]["proc"] }}</div>
+        <div class="prop title">{{ record["item"]["title"] }}</div>
+    </div>
+{% endfor %}
+</body>
+
+</html>

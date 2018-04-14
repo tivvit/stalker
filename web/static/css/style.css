@@ -1,0 +1,9 @@
+.idle {
+  color: gray; }
+
+.record {
+  clear: both;
+  border: 1px solid black;
+  display: flex; }
+  .record .prop {
+    padding: 0 .4em; }
