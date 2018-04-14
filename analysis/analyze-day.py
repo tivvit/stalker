@@ -203,7 +203,7 @@ def print_summary(args, logged_time, summary):
             human_time_diff(
                 datetime.timedelta(milliseconds=
                                    v.get("idle_sum", 0) / v.get("cnt", 1))),
-            k
+            "{} [{}]".format(k, ",".join(v["sources"]))
         ))
 
 
@@ -222,11 +222,13 @@ def get_summary(args, times):
                 "cnt": 0,
                 "groups_cnt": 0,
                 "idle_sum": 0,
+                "sources": set(),
             }
         summary[name]["duration"] += record["duration"]
         summary[name]["cnt"] += record.get("cnt", 1)
         summary[name]["groups_cnt"] += 1
         summary[name]["idle_sum"] += record.get("idle_sum", 0)
+        summary[name]["sources"].add(record.get("source", "Unknown"))
     summary = sorted(summary.items(),
                      key=lambda x: x[1].get("duration",
                                             datetime.timedelta()),
@@ -246,6 +248,8 @@ def print_stream(args, times):
 
 
 def logged_overall(times):
+    # todo per device?
+    # todo only active device
     logged_time = datetime.timedelta()
     unknown_time = datetime.timedelta()
     idle_time = datetime.timedelta()
