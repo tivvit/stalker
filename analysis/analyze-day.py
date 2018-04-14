@@ -61,8 +61,9 @@ def main():
         print_stream(args, times)
     print("-" * 10)
     print("SUMMARY")
-    logged_time, unknown_time = logged_overall(times)
+    logged_time, unknown_time, idle_time = logged_overall(times)
     print("Logged: {}".format(human_time_diff(logged_time)))
+    print("Idle: {}".format(human_time_diff(idle_time)))
     print("Unknown: {}".format(human_time_diff(unknown_time)))
     print("-" * 10)
     summary, time_sum = get_summary(args, times)
@@ -89,49 +90,57 @@ def process_stream(stream, args):
         new_name = get_name(i)
         time_skip_val = i["timestamp"] - last["timestamp"] if last else 0
         time_skip = time_skip_val > 5
-        found = False
+        refresh = False
         cnt += 1
         idletime = int(i.get("idletime", 0))
-        if active:
-            if idletime > args.idle:
-                # todo may be time skip
-                times.append(create_record(last_active, item, cnt=cnt,
-                                           idle=idle_sum))
-                found = True
-                active = False
-        else:
-            if idletime < last_idletime:
-                times.append(create_record(i, last_active, idle=idle_sum, data={
-                    "timestamp": last["timestamp"],
-                    "proc": "Idle",
-                    "title": "",
-                }))
-                found=True
-                active = True
-        if idletime < last_idletime:
-            last_active = i
-        last_idletime = idletime
         idle_sum += idletime
-        # todo take active in to account
+        # time_skip = missing entry = close and start again
         if time_skip:
+            # todo check sums
             # add time skip
-            times.append(create_record(i, last, data={
+            times.append(create_record(last, i, data={
                 "timestamp": last["timestamp"],
                 "proc": "None",
                 "title": "",
             }))
-            times.append(create_record(last, item, cnt=cnt, idle=idle_sum))
-            found = True
-        elif new_name != name:
-            times.append(create_record(i, item, cnt=cnt, idle=idle_sum))
-            found = True
-        if found:
+            if active:
+                times.append(
+                    create_record(item, last, cnt=cnt, idle_sum=idle_sum))
+            else:
+                times.append(
+                    create_record(last_active, last, cnt=cnt, idle_sum=idle_sum,
+                                  idle=True))
+                active = True
+            refresh = True
+        elif active:
+            if new_name != name:
+                times.append(create_record(item, i, cnt=cnt, idle_sum=idle_sum))
+                refresh = True
+            if idletime > args.idle:
+                # idle start = end record
+                times.append(create_record(item, last_active, cnt=cnt,
+                                           idle_sum=idle_sum))
+                # todo idle_sum should be forwarded
+                active = False
+                refresh = True
+        elif not active and idletime < last_idletime:
+            # idle end
+            times.append(
+                create_record(last_active, i, cnt=cnt, idle_sum=idle_sum,
+                              idle=True))
+            refresh = True
+            active = True
+            # found cleanup needs to be done before
+        if refresh:
             name = get_name(i)
             item = i
             cnt = 0
             idle_sum = 0
+        if idletime < last_idletime:
+            last_active = i
+        last_idletime = idletime
         last = i
-    times.append(create_record(i, item))
+    times.append(create_record(item, i))
     return times
 
 
@@ -189,7 +198,7 @@ def get_summary(args, times):
             time_sum += record["duration"]
         if is_none(record):
             continue
-        name = get_name(record["item"])
+        name = get_name(record["item"], idle=record.get("idle", False))
         if name not in summary:
             summary[name] = {
                 "duration": datetime.timedelta(),
@@ -216,18 +225,21 @@ def print_stream(args, times):
                 record["start"].strftime("%H:%M:%S"),
                 record["source"],
                 human_time_diff(record["duration"]),
-                get_name(record["item"])))
+                get_name(record["item"], idle=record.get("idle", False))))
 
 
 def logged_overall(times):
     logged_time = datetime.timedelta()
     unknown_time = datetime.timedelta()
+    idle_time = datetime.timedelta()
     for record in times:
         if is_none(record):
             unknown_time += record["duration"]
+        elif record.get("idle", False):
+            idle_time += record["duration"]
         else:
             logged_time += record["duration"]
-    return logged_time, unknown_time
+    return logged_time + idle_time, unknown_time, idle_time
 
 
 def is_none(r):
@@ -235,7 +247,7 @@ def is_none(r):
            r["item"]["title"] == ""
 
 
-def create_record(end, start, data=None, cnt=1, idle=0):
+def create_record(start, end, data=None, cnt=1, idle_sum=0, idle=False):
     if not data:
         data = start
     return {
@@ -245,7 +257,8 @@ def create_record(end, start, data=None, cnt=1, idle=0):
         "source": data.get("source", ""),
         "item": data,
         "cnt": cnt,
-        "idle_sum": idle,
+        "idle_sum": idle_sum,
+        "idle": idle,
     }
 
 
@@ -272,9 +285,10 @@ def parse_time(entry):
     return datetime.datetime.fromtimestamp(entry["timestamp"])
 
 
-def get_name(entry):
+def get_name(entry, idle=False):
     proc = match_proc(entry.get("proc", ""))
-    return "{} {}".format(proc, entry.get("title", ""))
+    idle = "Idle: " if idle else ""
+    return "{}{} {}".format(idle, proc, entry.get("title", ""))
 
 
 def match_proc(name):
