@@ -74,73 +74,90 @@ def main():
 
 
 def process_stream(stream, args):
-    first = stream[0]
-    name = get_name(first)
-    item = first
     times = []
-    last = None
-    i = None
-    cnt = 0
-    idle_sum = 0
-    last_idletime = int(first.get("idletime", 0))
-    active = True if last_idletime < args.idle else False
-    last_active = first
-    # todo support multiple sources (overlap)
-    for i in stream[1:]:
+    info = {}
+    sources = set()
+
+    for i in stream:
+        source = i.get("source", "Unknown")
+        idletime = int(i.get("idletime", 0))
         new_name = get_name(i)
-        time_skip_val = i["timestamp"] - last["timestamp"] if last else 0
+        if source not in info:
+            sources.add(source)
+            info[source] = {
+                "name": new_name,
+                "item": i,
+                "last": None,
+                "cnt": 0,
+                "idle_sum": 0,
+                "last_idletime": idletime,
+                "active": True if idletime < args.idle else False,
+                "last_active": i,
+            }
+            continue
+        # current info
+        ci = info[source]
+        time_skip_val = i["timestamp"] - ci["last"]["timestamp"] if \
+            ci["last"] else 0
         time_skip = time_skip_val > 5
         refresh = False
-        cnt += 1
-        idletime = int(i.get("idletime", 0))
-        idle_sum += idletime
-        # time_skip = missing entry = close and start again
+        ci["cnt"] += 1
+        ci["idle_sum"] += idletime
         if time_skip:
+            # time_skip = missing entry = close and start again
             # todo check sums
-            # add time skip
-            times.append(create_record(last, i, data={
-                "timestamp": last["timestamp"],
+            # Add time skip record
+            times.append(create_record(ci["last"], i, data={
+                "timestamp": ci["last"]["timestamp"],
                 "proc": "None",
                 "title": "",
             }))
-            if active:
+            if ci["active"]:
+                # close last active record
                 times.append(
-                    create_record(item, last, cnt=cnt, idle_sum=idle_sum))
+                    create_record(ci["item"], ci["last"], cnt=ci["cnt"],
+                                  idle_sum=ci["idle_sum"]))
             else:
+                # close last idle record
                 times.append(
-                    create_record(last_active, last, cnt=cnt, idle_sum=idle_sum,
+                    create_record(ci["last_active"], ci["last"], cnt=ci["cnt"],
+                                  idle_sum=ci["idle_sum"],
                                   idle=True))
-                active = True
+                ci["active"] = True
             refresh = True
-        elif active:
-            if new_name != name:
-                times.append(create_record(item, i, cnt=cnt, idle_sum=idle_sum))
+        elif ci["active"]:
+            if new_name != ci["name"]:
+                times.append(create_record(ci["item"], i, cnt=ci["cnt"],
+                                           idle_sum=ci["idle_sum"]))
                 refresh = True
             if idletime > args.idle:
-                # idle start = end record
-                times.append(create_record(item, last_active, cnt=cnt,
-                                           idle_sum=idle_sum))
+                # Add activity before idle
+                times.append(create_record(ci["item"],
+                                           ci["last_active"],
+                                           cnt=ci["cnt"],
+                                           idle_sum=ci["idle_sum"]))
                 # todo idle_sum should be forwarded
-                active = False
+                ci["active"] = False
                 refresh = True
-        elif not active and idletime < last_idletime:
+        elif not ci["active"] and idletime < ci["last_idletime"]:
             # idle end
-            times.append(
-                create_record(last_active, i, cnt=cnt, idle_sum=idle_sum,
-                              idle=True))
+            times.append(create_record(ci["last_active"], i, cnt=ci["cnt"],
+                                       idle_sum=ci["idle_sum"],
+                                       idle=True))
             refresh = True
-            active = True
-            # found cleanup needs to be done before
+            ci["active"] = True
         if refresh:
-            name = get_name(i)
-            item = i
-            cnt = 0
-            idle_sum = 0
-        if idletime < last_idletime:
-            last_active = i
-        last_idletime = idletime
-        last = i
-    times.append(create_record(item, i))
+            ci["name"] = get_name(i)
+            ci["item"] = i
+            ci["cnt"] = 0
+            ci["idle_sum"] = 0
+        if idletime < ci["last_idletime"]:
+            ci["last_active"] = i
+        ci["last_idletime"] = idletime
+        ci["last"] = i
+    # add last one
+    for s in sources:
+        times.append(create_record(info[s]["item"], info[s]["last"]))
     return times
 
 
