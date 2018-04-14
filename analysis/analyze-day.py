@@ -29,6 +29,7 @@ def main():
                     help="Only > time [s] in summary")
     ap.add_argument("-idl", "--idle", type=int, default=60 * 10 ** 3,
                     help="> x ms is considered idle")
+    ap.add_argument("-ss", "--save_stream", help="filename stream json")
     args = ap.parse_args()
     date = args.day
     if not args.day:
@@ -59,6 +60,8 @@ def main():
         print("STREAM")
         print("-" * 10)
         print_stream(args, times)
+    if args.save_stream:
+        json.dump(times, open(args.save_stream, "w"), default=json_serialization)
     print("-" * 10)
     print("SUMMARY")
     logged_time, unknown_time, idle_time = logged_overall(times)
@@ -72,6 +75,11 @@ def main():
     if args.sum:
         print("{}: {}s".format(args.sum, human_time_diff(time_sum)))
 
+def json_serialization(o):
+    if isinstance(o, datetime.datetime):
+        return o.isoformat()
+    if isinstance(o, datetime.timedelta):
+        return o.total_seconds()
 
 def process_stream(stream, args):
     times = []
