@@ -7,6 +7,7 @@ from flask import render_template
 from analysis.analyze_day import human_time_diff
 from analysis.analyze_day import load_stream
 from analysis.analyze_day import process_stream
+from analysis.analyze_day import get_name
 
 app = Flask(__name__)
 
@@ -33,7 +34,12 @@ def main():
     times = process_stream(stream)
     times.sort(key=lambda x: x["start"])
     # todo detect sources
-    return render_template('index.html', data=times[:50])
+    times = [i for i in times if i["duration"] > datetime.timedelta(seconds=2)]
+    for i in times:
+        i.update({
+            "name": get_name(i["item"])
+        })
+    return render_template('index.html', data=times)
 
 
 if __name__ == "__main__":

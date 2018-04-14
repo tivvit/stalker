@@ -94,7 +94,7 @@ def process_stream(stream, idle_time=60 * 10 ** 3):
 
     for i in stream:
         source = i.get("source", "Unknown")
-        idletime = int(i.get("idletime", 0))
+        idletime = int(i.get("idletime", 0)) if i.get("idletime", 0) else 0
         new_name = get_name(i)
         if source not in info:
             sources.add(source)

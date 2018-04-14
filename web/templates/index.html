@@ -12,8 +12,7 @@
         <div class="prop start">{{ record["start"].strftime("%H:%M:%S") }}</div>
         <div class="prop duration">{{ record["duration"] | timediff }}</div>
         <div class="prop source">{{ record["source"] }}</div>
-        <div class="prop proc">{{ record["item"]["proc"] }}</div>
-        <div class="prop title">{{ record["item"]["title"] }}</div>
+        <div class="prop proc">{{ record["name"] }}</div>
     </div>
 {% endfor %}
 </body>
