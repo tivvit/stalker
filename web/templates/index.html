@@ -7,6 +7,7 @@
 </head>
 
 <body>
+<div>
 {% for record in data %}
     <div id="{{ record['id'] }}"
          class="record {% if record['idle'] %}idle{% endif %}">
@@ -16,6 +17,7 @@
         <div class="prop name">{{ record["name"] }}</div>
     </div>
 {% endfor %}
+</div>
 
 <div id="controls">
     <div id="hide">hide</div>

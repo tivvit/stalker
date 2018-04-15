@@ -37,7 +37,7 @@ body {
   border: 1px solid black;
   border-bottom: none; }
   .record:last-child {
-    border-bottom: 1px solid; }
+    border-bottom: 1px solid black; }
   .record .prop {
     padding: 0 .2em;
     flex: 1 1 0;

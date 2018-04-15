@@ -1,5 +1,7 @@
 var selectedItems = [];
 
+// todo show and hide controls
+
 const selectable = new Selectable({
     filter: ".record",
     toggle: true,
