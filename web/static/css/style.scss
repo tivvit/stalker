@@ -10,9 +10,25 @@ body {
   z-index: 2;
   padding: 2em;
   display: flex;
+  flex-direction: column;
   border-radius: .4em;
 
-  div {
+  form {
+    width: 100%;
+    padding: 0 1em;
+
+    input {
+      width: 100%;
+      border-radius: .4em;
+      margin-bottom: 1em;
+    }
+  }
+
+  .row {
+    display: flex;
+  }
+
+  div.button {
     padding: .5em 2em;
     margin: .5em;
     text-transform: uppercase;
@@ -26,12 +42,16 @@ body {
   }
 }
 
+.search-inputs {
+  margin-bottom: 1em;
+}
+
 .idle {
   color: gray;
 }
 
 .active {
-  background-color: rgba(22, 170, 50, 0.76);
+  background-color: rgba(22, 170, 50, 0.3) !important;
 }
 
 .selecting {
@@ -42,22 +62,45 @@ body {
   display: none !important;
 }
 
-.record {
-  display: flex;
-  border: 1px solid black;
-  border-bottom: none;
+.group {
+  padding-left: 2em;
+}
 
-  &:last-child {
-    border-bottom: 1px solid black;
+.group_parent {
+  border: 2px solid rgb(65, 157, 213);
+}
+
+.entry {
+  display: flex;
+  background-color: rgba(230, 230, 230, 0.76);
+  border-radius: .4em;
+  margin-bottom: 4px;
+  padding: 2px;
+
+  .start {
+    font-size: 11px;
   }
 
   .prop {
     padding: 0 .2em;
     flex: 1 1 0;
-    border-right: 1px solid rgba(0, 0, 0, .2);
+    border-right: 1px solid rgba(175, 175, 175, 0.2);
+  }
+
+  .tags {
+    flex-grow: 3;
+    display: flex;
+
+    .tag {
+      border-radius: .4em;
+      padding: 0 .4em;
+      margin-right: 0.2em;
+      font-size: 13px;
+      border: 1px solid rgba(0, 0, 0, 0.5);
+    }
   }
 
   .name {
-    flex-grow: 16;
+    flex-grow: 12;
   }
 }

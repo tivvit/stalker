@@ -2,30 +2,94 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" type="text/css"
+          href="{{ url_for('static', filename='css/style.css') }}">
     <title>Stalker</title>
 </head>
 
 <body>
-<div>
-{% for record in data %}
-    <div id="{{ record['id'] }}"
-         class="record {% if record['idle'] %}idle{% endif %}">
-        <div class="prop start">{{ record["start"].strftime("%H:%M:%S") }}</div>
-        <div class="prop duration">{{ record["duration"] | timediff }}</div>
-        <div class="prop source">{{ record["source"] }}</div>
-        <div class="prop name">{{ record["name"] }}</div>
+<input type="hidden" id="date" value="{{ date }}">
+
+<div id="filter">
+    <div class="search-inputs">
+        <input class="search" placeholder="Search"/>
+        <input id="lg-filt" placeholder="duration > [s]"/>
+        <input id="sm-filt" placeholder="duration < [s]"/>
     </div>
-{% endfor %}
+
+    <div id="selectable" class="list">
+        {% for record in data %}
+        <div class="entry-wrap">
+            <div id="{{ record['id'] }}"
+                 class="entry
+                    {% if 'group' not in record %}record{% else %}
+                        group_parent{% endif %}
+                    {% if record['idle'] %}idle{% endif %}
+                    {% if record['hidden'] %}hidden{% endif %}">
+                <div class="prop start">{{ record["start"].strftime("%H:%M:%S")
+                    }}
+                </div>
+                <div class="prop duration"
+                     data-duration="{{ record['duration'].total_seconds() }}">
+                    {{ record["duration"] | timediff }}
+                </div>
+                <div class="prop name">{{ record["name"] }}</div>
+                <div class="prop tags">
+                    {% for tag in record.get("tags", []) %}
+                    <div class="tag">{{ tag }}</div>
+                    {% endfor %}
+                </div>
+                <div class="prop source">{{ record["source"] }}</div>
+            </div>
+            {% if record["group"] %}
+                <div class="group hidden">
+                    {% for g_record in record["group"] %}
+                        <div id="{{ g_record['id'] }}"   class="entry record
+                        {% if g_record['idle'] %}idle{% endif %}
+                        {% if g_record['hidden'] %}hidden{% endif %}">
+                    <div class="prop start">{{ g_record["start"].strftime("%H:%M:%S")
+                        }}
+                    </div>
+                    <div class="prop duration"
+                         data-duration="{{ record['duration'].total_seconds() }}">
+                        {{ g_record["duration"] | timediff }}
+                    </div>
+                    <div class="prop name">{{ g_record["name"] }}</div>
+                    <div class="prop tags">
+                        {% for tag in g_record.get("tags", []) %}
+                            <div class="tag">{{ tag }}</div>
+                        {% endfor %}
+                    </div>
+                    <div class="prop source">{{ g_record["source"] }}</div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
 </div>
 
 <div id="controls">
-    <div id="hide">hide</div>
-    <div>tag</div>
+    <div class="row">
+        <form>
+            <input type="text" name="input" id="input">
+        </form>
+    </div>
+    <div class="row">
+        <div class="button" id="tag">tag</div>
+        <div class="button" id="describe">describe</div>
+        <div class="button" id="hide">hide</div>
+        <div class="button" id="all">all</div>
+        <div class="button" id="clear">clear</div>
+    </div>
 </div>
 
-<script type="text/javascript" src="https://unpkg.com/selectable.js@latest/selectable.min.js"></script>
-<script type="text/javascript" src="{{ url_for('static', filename='js/index.js') }}"></script>
+<script type="text/javascript"
+        src="https://unpkg.com/selectable.js@latest/selectable.min.js"></script>
+<script src="//cdnjs.cloudflare.com/ajax/libs/list.js/1.5.0/list.min.js"></script>
+<script type="text/javascript"
+        src="{{ url_for('static', filename='js/index.js') }}"></script>
 </body>
 
 </html>
