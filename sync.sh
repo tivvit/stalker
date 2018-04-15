@@ -3,14 +3,14 @@ set -e
 PATH=$PATH:/usr/local/bin
 PC="$1"
 # backup
-rclone copy ~/stalker g:stalker --exclude "`date +%y-%m-%d`.*"
+rclone copy ~/stalker g:stalker -u --exclude "`date +%y-%m-%d`.*"
 # backup active (from this machine)
 mkdir -p /tmp/stalker
 cp ~/stalker/`date +%y-%m-%d`.${PC}.* /tmp/stalker
 rclone copy /tmp/stalker g:stalker
 rm /tmp/stalker/*
 # download other machines
-rclone copy g:stalker ~/stalker --exclude "`date +%y-%m-%d`.${PC}.*"
+rclone copy g:stalker ~/stalker -u --exclude "`date +%y-%m-%d`.${PC}.*"
 # delete non-compressed files on remote
 for i in ~/stalker/*.log; do
     # exclude today
