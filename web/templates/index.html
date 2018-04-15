@@ -8,13 +8,22 @@
 
 <body>
 {% for record in data %}
-    <div class="record {% if record['idle'] %}idle{% endif %}">
+    <div id="{{ record['id'] }}"
+         class="record {% if record['idle'] %}idle{% endif %}">
         <div class="prop start">{{ record["start"].strftime("%H:%M:%S") }}</div>
         <div class="prop duration">{{ record["duration"] | timediff }}</div>
         <div class="prop source">{{ record["source"] }}</div>
-        <div class="prop proc">{{ record["name"] }}</div>
+        <div class="prop name">{{ record["name"] }}</div>
     </div>
 {% endfor %}
+
+<div id="controls">
+    <div id="hide">hide</div>
+    <div>tag</div>
+</div>
+
+<script type="text/javascript" src="https://unpkg.com/selectable.js@latest/selectable.min.js"></script>
+<script type="text/javascript" src="{{ url_for('static', filename='js/index.js') }}"></script>
 </body>
 
 </html>

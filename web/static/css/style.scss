@@ -1,13 +1,63 @@
+body {
+  font-family: Arial, Helvetica Neue, Helvetica, sans-serif;
+}
+
+#controls {
+  position: fixed;
+  right: 2em;
+  bottom: 1em;
+  background-color: rgba(65, 65, 65, 0.75);
+  z-index: 2;
+  padding: 2em;
+  display: flex;
+  border-radius: .4em;
+
+  div {
+    padding: .5em 2em;
+    margin: .5em;
+    text-transform: uppercase;
+    border-radius: .4em;
+    cursor: pointer;
+    background-color: rgb(65, 157, 213);
+
+    &:hover {
+      box-shadow: inset 0 0 10px rgba(65, 65, 65, 0.8);
+    }
+  }
+}
+
 .idle {
   color: gray;
 }
 
+.active {
+  background-color: rgba(22, 170, 50, 0.76);
+}
+
+.selecting {
+  background-color: lightgray;
+}
+
+.hidden {
+  display: none !important;
+}
+
 .record {
-  clear: both;
-  border: 1px solid black;
   display: flex;
+  border: 1px solid black;
+  border-bottom: none;
+
+  &:last-child {
+    border-bottom: 1px solid;
+  }
 
   .prop {
-    padding: 0 .4em;
+    padding: 0 .2em;
+    flex: 1 1 0;
+    border-right: 1px solid rgba(0, 0, 0, .2);
+  }
+
+  .name {
+    flex-grow: 16;
   }
 }

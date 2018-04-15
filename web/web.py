@@ -37,7 +37,9 @@ def main():
     times = [i for i in times if i["duration"] > datetime.timedelta(seconds=2)]
     for i in times:
         i.update({
-            "name": get_name(i["item"])
+            "name": get_name(i["item"]),
+            "id": "{}-{}".format(i.get("source", "Unknown "),
+                                 i["start"].timestamp()),
         })
     return render_template('index.html', data=times)
 
