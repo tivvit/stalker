@@ -34,7 +34,7 @@ def main():
     times = process_stream(stream)
     times.sort(key=lambda x: x["start"])
     # todo detect sources
-    times = [i for i in times if i["duration"] > datetime.timedelta(seconds=2)]
+    # times = [i for i in times if i["duration"] > datetime.timedelta(seconds=2)]
     for i in times:
         i.update({
             "name": get_name(i["item"]),
