@@ -5,6 +5,7 @@ import os
 from flask import Flask
 from flask import request
 from flask import render_template
+from flask import redirect
 
 import analysis
 from analysis.analyze_day import human_time_diff
@@ -28,6 +29,11 @@ def main():
     if now.time() < analysis.config.morning:
         now -= datetime.timedelta(days=1)
     date = datetime.datetime.strftime(now, "%y-%m-%d")
+    return redirect("{}".format(date), code=302)
+
+
+@app.route("/<date>")
+def main_date(date):
     day_filename = os.path.join(data_path, date)
     stream = load_stream(day_filename)
     next_day = datetime.datetime.strptime(date, "%y-%m-%d") + \
