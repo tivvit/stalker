@@ -200,5 +200,24 @@ def describe():
     return ""
 
 
+@app.route("/undescribe", methods=["POST"])
+def undescribe():
+    data = request.json
+    filename = os.path.join(data_path,
+                            "{}{}".format(data["date"], ".metadata.json"))
+    metadata = {}
+    if os.path.exists(filename):
+        metadata = json.load(open(filename, "r"))
+    for i in data["items"]:
+        source, timestamp = i.split("$-$")
+        if source not in metadata:
+            metadata[source] = {}
+        if timestamp not in metadata[source]:
+            metadata[source][timestamp] = {}
+        metadata[source][timestamp].pop("description", None)
+    json.dump(metadata, open(filename, "w"))
+    return ""
+
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=80, threaded=True)

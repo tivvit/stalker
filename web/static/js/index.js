@@ -113,6 +113,27 @@ document.getElementById("describe").onclick = function (ev) {
     location.reload();
 };
 
+
+document.getElementById("undescribe").onclick = function (ev) {
+    var xhr = new XMLHttpRequest();
+    xhr.open("POST", "/undescribe", true);
+    xhr.setRequestHeader("Content-Type", "application/json");
+    xhr.onreadystatechange = function () {
+        if (xhr.readyState === 4 && xhr.status !== 200) {
+            console.log(xhr.status, xhr.responseText);
+        }
+    };
+    var data = JSON.stringify({
+        "date": document.getElementById("date").value,
+        "items": selectedItems
+    });
+    xhr.send(data);
+    clear();
+    document.getElementById("input").value = "";
+    location.reload();
+};
+
+
 var options = {
     valueNames: [
         'name',
