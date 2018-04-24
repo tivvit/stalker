@@ -11,6 +11,7 @@ import analysis
 from analysis.analyze_day import human_time_diff
 from analysis.analyze_day import load_stream
 from analysis.analyze_day import process_stream
+from analysis.analyze_day import enrich_stream
 from analysis.analyze_day import get_name
 
 app = Flask(__name__)
@@ -47,6 +48,7 @@ def main_date(date):
         print("No data found")
         return
     times = process_stream(stream)
+    times = enrich_stream(times)
     append_metadata(date, times)
     times = create_groups(times)
     times.sort(key=lambda x: x["start"])

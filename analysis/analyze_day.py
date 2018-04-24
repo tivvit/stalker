@@ -3,6 +3,7 @@ import datetime
 import json
 import os
 from glob import glob
+import re
 
 try:
     from . import config
@@ -173,6 +174,21 @@ def process_stream(stream, idle_time=60 * 10 ** 3):
     for s in sources:
         times.append(create_record(info[s]["item"], info[s]["last"]))
     return times
+
+
+def enrich_stream(stream):
+    patterns = [
+        (re.compile(r".*[cC]hrome.*"), "web"),
+        (re.compile(r".*PyCharm.*"), "dev,python"),
+        (re.compile(r".*Slack.*"), "chat"),
+        (re.compile(r".*Netflix.*"), "fun"),
+    ]
+    for s in stream:
+        s["tags"] = []
+        for p in patterns:
+            if p[0].match(s["item"]["title"]):
+                s["tags"].append(p[1])
+    return stream
 
 
 def load_stream(day_filename, no_delete_morning=False, only_morning=False):
