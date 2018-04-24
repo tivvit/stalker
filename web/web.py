@@ -13,9 +13,10 @@ from analysis.analyze_day import load_stream
 from analysis.analyze_day import process_stream
 from analysis.analyze_day import enrich_stream
 from analysis.analyze_day import get_name
+from analysis.analyze_day import get_patterns
 
 app = Flask(__name__)
-data_path = "/data/"
+data_path = "/root/stalker/"
 
 
 @app.template_filter()
@@ -47,8 +48,9 @@ def main_date(date):
         # todo
         print("No data found")
         return
-    times = process_stream(stream)
-    times = enrich_stream(times)
+    patterns = get_patterns()
+    times = process_stream(stream, patterns)
+    times = enrich_stream(times, patterns)
     append_metadata(date, times)
     times = create_groups(times)
     times.sort(key=lambda x: x["start"])
@@ -56,7 +58,8 @@ def main_date(date):
     # times = [i for i in times if i["duration"] > datetime.timedelta(seconds=2)]
     for i in times:
         i.update({
-            "name": get_name(i["item"]) if "group" not in i else i["name"],
+            "name": get_name(i["item"], patterns) if "group" not in i else i[
+                "name"],
             "id": "{}$-${}".format(i.get("source", "Unknown "),
                                    i["start"].timestamp()),
         })
@@ -65,7 +68,7 @@ def main_date(date):
         if "group" in i:
             for g in i["group"]:
                 g.update({
-                    "name": get_name(g["item"]),
+                    "name": get_name(g["item"], patterns),
                     "id": "{}$-${}".format(g.get("source", "Unknown "),
                                            g["start"].timestamp()),
                 })

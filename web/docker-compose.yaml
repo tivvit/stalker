@@ -15,7 +15,7 @@ services:
     volumes:
     - .:/app
     - ../analysis:/app/analysis
-    - ~/stalker:/data
+    - ~/stalker:/root/stalker
     - /etc/localtime:/etc/localtime:ro
     environment:
     - FLASK_DEBUG=1

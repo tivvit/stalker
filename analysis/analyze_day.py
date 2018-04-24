@@ -56,14 +56,15 @@ def main():
     if not stream:
         print("No data found")
         return
-    times = process_stream(stream, idle_time=args.idle)
+    patterns = get_patterns()
+    times = process_stream(stream, patterns, idle_time=args.idle)
     # todo estimate sleep time
     times.sort(key=lambda x: x["start"])
     if args.stream:
         print("-" * 10)
         print("STREAM")
         print("-" * 10)
-        print_stream(args, times)
+        print_stream(args, times, patterns)
     if args.save_stream:
         json.dump(times, open(args.save_stream, "w"),
                   default=json_serialization)
@@ -74,7 +75,7 @@ def main():
     print("Idle: {}".format(human_time_diff(idle_time)))
     print("Unknown: {}".format(human_time_diff(unknown_time)))
     print("-" * 10)
-    summary, time_sum = get_summary(args, times)
+    summary, time_sum = get_summary(args, times, patterns)
     print_summary(args, logged_time, summary)
     print("-" * 10)
     if args.sum:
@@ -88,7 +89,7 @@ def json_serialization(o):
         return o.total_seconds()
 
 
-def process_stream(stream, idle_time=60 * 10 ** 3):
+def process_stream(stream, patterns, idle_time=60 * 10 ** 3):
     times = []
     info = {}
     sources = set()
@@ -96,7 +97,7 @@ def process_stream(stream, idle_time=60 * 10 ** 3):
     for i in stream:
         source = i.get("source", "Unknown")
         idletime = int(i.get("idletime", 0)) if i.get("idletime", 0) else 0
-        new_name = get_name(i)
+        new_name = get_name(i, patterns)
         if source not in info:
             sources.add(source)
             info[source] = {
@@ -162,7 +163,7 @@ def process_stream(stream, idle_time=60 * 10 ** 3):
             refresh = True
             ci["active"] = True
         if refresh:
-            ci["name"] = get_name(i)
+            ci["name"] = get_name(i, patterns)
             ci["item"] = i
             ci["cnt"] = 0
             ci["idle_sum"] = 0
@@ -176,18 +177,15 @@ def process_stream(stream, idle_time=60 * 10 ** 3):
     return times
 
 
-def enrich_stream(stream):
-    patterns = [
-        (re.compile(r".*[cC]hrome.*"), "web"),
-        (re.compile(r".*PyCharm.*"), "dev,python"),
-        (re.compile(r".*Slack.*"), "chat"),
-        (re.compile(r".*Netflix.*"), "fun"),
-    ]
+def enrich_stream(stream, patterns):
     for s in stream:
-        s["tags"] = []
-        for p in patterns:
-            if p[0].match(s["item"]["title"]):
-                s["tags"].append(p[1])
+        s["tags"] = set()
+        for p in patterns["title-tags"]:
+            if p["re"].search(s["item"]["title"]):
+                s["tags"].update(p["name"].split(','))
+        for p in patterns["proc-tags"]:
+            if p["re"].search(s["item"]["proc"]):
+                s["tags"].update(p["name"].split(','))
     return stream
 
 
@@ -237,15 +235,16 @@ def print_summary(args, logged_time, summary):
         ))
 
 
-def get_summary(args, times):
+def get_summary(args, times, patterns):
     summary = {}
     time_sum = datetime.timedelta()
     for record in times:
-        if args.sum and args.sum in get_name(record["item"]):
+        if args.sum and args.sum in get_name(record["item"], patterns):
             time_sum += record["duration"]
         if is_none(record):
             continue
-        name = get_name(record["item"], idle=record.get("idle", False))
+        name = get_name(record["item"], patterns,
+                        idle=record.get("idle", False))
         if name not in summary:
             summary[name] = {
                 "duration": datetime.timedelta(),
@@ -266,7 +265,7 @@ def get_summary(args, times):
     return summary, time_sum
 
 
-def print_stream(args, times):
+def print_stream(args, times, patterns):
     for record in times:
         short = is_short(args, record)
         if not args.ignore or not short:
@@ -274,7 +273,8 @@ def print_stream(args, times):
                 record["start"].strftime("%H:%M:%S"),
                 record["source"],
                 human_time_diff(record["duration"]),
-                get_name(record["item"], idle=record.get("idle", False))))
+                get_name(record["item"], patterns,
+                         idle=record.get("idle", False))))
 
 
 def logged_overall(times):
@@ -336,22 +336,38 @@ def parse_time(entry):
     return datetime.datetime.fromtimestamp(entry["timestamp"])
 
 
-def get_name(entry, idle=False):
-    proc = match_proc(entry.get("proc", ""))
+def get_name(entry, patterns, idle=False):
+    proc = match_proc(entry.get("proc", ""), patterns)
     idle = "Idle: " if idle else ""
     return "{}{} {}".format(idle, proc, entry.get("title", ""))
 
 
-def match_proc(name):
-    for i in config.mapping:
-        if i in name:
-            return config.mapping[i]
+def match_proc(name, patterns):
+    for i in patterns["proc-names"]:
+        if i["re"].search(name):
+            return i["name"]
     return name
 
 
 def get_machine(log_filepath):
     filename = os.path.basename(log_filepath)
     return filename.split('.')[-2]
+
+
+def get_patterns():
+    if os.path.exists(os.path.expanduser("~/stalker/patterns.json")):
+        d = json.load(open(os.path.expanduser("~/stalker/patterns.json"), "r"))
+        for k, v in d.items():
+            for p in v:
+                print(p)
+                p["re"] = re.compile(p["re"])
+        return d
+    else:
+        return {
+            "proc-names": [],
+            "proc-tags": [],
+            "title-tags": []
+        }
 
 
 if __name__ == '__main__':
