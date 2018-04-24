@@ -359,7 +359,6 @@ def get_patterns():
         d = json.load(open(os.path.expanduser("~/stalker/patterns.json"), "r"))
         for k, v in d.items():
             for p in v:
-                print(p)
                 p["re"] = re.compile(p["re"])
         return d
     else:
