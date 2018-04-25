@@ -16,9 +16,9 @@ services:
     - .:/app
     - ../analysis:/app/analysis
     - ~/stalker:/root/stalker
-    - /etc/localtime:/etc/localtime:ro
     environment:
     - FLASK_DEBUG=1
+    - TZ=Europe/Prague
     command: python3 web.py
     depends_on:
     - sass_watch
