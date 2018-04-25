@@ -385,6 +385,7 @@ def analyze_tags(stream):
                     "duration": datetime.timedelta(),
                     "idle": datetime.timedelta(),
                 }
+            # todo aggregate samples for tags
             if i["idle"]:
                 d[t]["idle"] += i["duration"]
             else:
