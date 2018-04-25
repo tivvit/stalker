@@ -145,11 +145,13 @@ def process_stream(stream, patterns, idle_time=60 * 10 ** 3):
                                   idle=True))
                 ci["active"] = True
             refresh = True
+            ci["last_active"] = i
         elif ci["active"]:
             if new_name != ci["name"]:
                 times.append(create_record(ci["item"], i, cnt=ci["cnt"],
                                            idle_sum=ci["idle_sum"]))
                 refresh = True
+                ci["last_active"] = i
             if idletime > idle_time:
                 # Add activity before idle
                 times.append(create_record(ci["item"],
