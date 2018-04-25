@@ -58,6 +58,7 @@ def main():
         return
     patterns = get_patterns()
     times = process_stream(stream, patterns, idle_time=args.idle)
+    times = enrich_stream(times, patterns)
     # todo estimate sleep time
     times.sort(key=lambda x: x["start"])
     if args.stream:
@@ -77,6 +78,9 @@ def main():
     print("-" * 10)
     summary, time_sum = get_summary(args, times, patterns)
     print_summary(args, logged_time, summary)
+    print("-" * 10)
+    tag_analysis, tagged = analyze_tags(times)
+    print_tag_summary(tag_analysis, tagged, logged_time)
     print("-" * 10)
     if args.sum:
         print("{}: {}s".format(args.sum, human_time_diff(time_sum)))
@@ -367,6 +371,40 @@ def get_patterns():
             "proc-tags": [],
             "title-tags": []
         }
+
+
+def analyze_tags(stream):
+    d = {}
+    tagged = datetime.timedelta()
+    for i in stream:
+        if i["tags"]:
+            tagged += i["duration"]
+        for t in i["tags"]:
+            if t not in d:
+                d[t] = {
+                    "duration": datetime.timedelta(),
+                    "idle": datetime.timedelta(),
+                }
+            if i["idle"]:
+                d[t]["idle"] += i["duration"]
+            else:
+                d[t]["duration"] += i["duration"]
+    return sorted(d.items(), key=lambda x: x[1]["duration"],
+                  reverse=True), tagged
+
+
+def print_tag_summary(summary, tagged, logged_time):
+    print("Tagged: {} ({:.2f}%)".format(human_time_diff(tagged),
+                                        (tagged / logged_time) * 100))
+    print("-" * 10)
+    print("{: <20}\t{: <12}\t{: <6}\t{: <10}\t{: <10}".format(
+        "tag", "duration", "percent", "idle", "idle perc"))
+    for t, v in summary:
+        duration = v["duration"]
+        perc = ((duration + v["idle"]) / logged_time) * 100
+        print("{: <20}\t{: <12}\t{:.2f} %\t{: <12}\t{:.2f} %".format(
+            t, human_time_diff(duration), perc, human_time_diff(v["idle"]),
+            (v["idle"] / (v["idle"] + duration)) * 100))
 
 
 if __name__ == '__main__':
