@@ -21,6 +21,10 @@ def main():
     ap.add_argument("-sk", "--sum", help="sum by keyword")
     ap.add_argument("-ndm", "--no_delete_morning", action='store_true',
                     help="do not filter out previous days night")
+    ap.add_argument("-nts", "--no_tag_samples", action='store_true',
+                    help="do not show examples for tags")
+    ap.add_argument("-cts", "--count_tag_samples", type=int,
+                    help="Numple of sample tags", default=3)
     ap.add_argument("-ind", "--ignore_next_day", action='store_true',
                     help="Ignore next day logs before wake up")
     ap.add_argument("-s", "--stream", action='store_true',
@@ -79,8 +83,8 @@ def main():
     summary, time_sum = get_summary(args, times, patterns)
     print_summary(args, logged_time, summary)
     print("-" * 10)
-    tag_analysis, tagged = analyze_tags(times)
-    print_tag_summary(tag_analysis, tagged, logged_time)
+    tag_analysis, tagged = analyze_tags(times, patterns)
+    print_tag_summary(tag_analysis, tagged, logged_time, args)
     print("-" * 10)
     if args.sum:
         print("{}: {}s".format(args.sum, human_time_diff(time_sum)))
@@ -186,6 +190,8 @@ def process_stream(stream, patterns, idle_time=60 * 10 ** 3):
 def enrich_stream(stream, patterns):
     for s in stream:
         s["tags"] = set()
+        if s["idle"]:
+            s["tags"].add("idle")
         for p in patterns["title-tags"]:
             if p["re"].search(s["item"]["title"]):
                 s["tags"].update(p["name"].split(','))
@@ -375,7 +381,7 @@ def get_patterns():
         }
 
 
-def analyze_tags(stream):
+def analyze_tags(stream, patterns):
     d = {}
     tagged = datetime.timedelta()
     for i in stream:
@@ -386,28 +392,44 @@ def analyze_tags(stream):
                 d[t] = {
                     "duration": datetime.timedelta(),
                     "idle": datetime.timedelta(),
+                    "samples": {},
                 }
-            # todo aggregate samples for tags
+            n = get_name(i["item"], patterns, i["idle"])
+            if n not in d[t]["samples"]:
+                d[t]["samples"][n] = i["duration"]
+            else:
+                d[t]["samples"][n] += i["duration"]
+
             if i["idle"]:
                 d[t]["idle"] += i["duration"]
             else:
                 d[t]["duration"] += i["duration"]
-    return sorted(d.items(), key=lambda x: x[1]["duration"],
+    for t, v in d.items():
+        v["samples"] = sorted(v["samples"].items(),
+                              key=lambda x: x[1],
+                              reverse=True)
+    return sorted(d.items(), key=lambda x: x[1]["duration"] + x[1]["idle"],
                   reverse=True), tagged
 
 
-def print_tag_summary(summary, tagged, logged_time):
+def print_tag_summary(summary, tagged, logged_time, args):
     print("Tagged: {} ({:.2f}%)".format(human_time_diff(tagged),
                                         (tagged / logged_time) * 100))
     print("-" * 10)
-    print("{: <20}\t{: <12}\t{: <6}\t{: <10}\t{: <10}".format(
-        "tag", "duration", "percent", "idle", "idle perc"))
+    print("{: <20}\t{: <12}\t{: <8}\t{: <6}\t{: <10}\t{: <10}".format(
+        "tag", "duration", "percent", "cnt", "idle", "idle perc"))
     for t, v in summary:
         duration = v["duration"]
         perc = ((duration + v["idle"]) / logged_time) * 100
-        print("{: <20}\t{: <12}\t{:.2f} %\t{: <12}\t{:.2f} %".format(
-            t, human_time_diff(duration), perc, human_time_diff(v["idle"]),
+        print("{: <20}\t{: <12}\t{:>5.2f} % \t{: <6}\t{: <12}\t{:.2f} "
+              "%".format(
+            t, human_time_diff(duration), perc, len(v["samples"]),
+            human_time_diff(v["idle"]),
             (v["idle"] / (v["idle"] + duration)) * 100))
+        if args.no_tag_samples:
+            continue
+        for s in v["samples"][:args.count_tag_samples]:
+            print("\t{}\t{}".format(human_time_diff(s[1]), s[0]))
 
 
 if __name__ == '__main__':
