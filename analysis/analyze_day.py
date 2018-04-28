@@ -432,5 +432,72 @@ def print_tag_summary(summary, tagged, logged_time, args):
             print("\t{}\t{}".format(human_time_diff(s[1]), s[0]))
 
 
+def append_metadata(date, times):
+    filename = os.path.join(config.base_path,
+                            "{}{}".format(date, ".metadata.json"))
+    if not os.path.exists(filename):
+        return
+    metadata = json.load(open(filename, "r"))
+    for i in times:
+        src = i.get("source", "Unknown")
+        if src not in metadata:
+            continue
+        timestamp = str(i["start"].timestamp())
+        if timestamp in metadata[src]:
+            i.update(metadata[src][timestamp])
+
+
+def create_groups(times):
+    last_desc = None
+    out = []
+    group = []
+    for i in times:
+        if "description" not in i and not last_desc:
+            out.append(i)
+        elif "description" not in i and last_desc:
+            s = datetime.timedelta()
+            for g in group:
+                s += g["duration"]
+            out.append({
+                "start": group[0]["start"],
+                "duration": s,
+                "name": last_desc,
+                "group": group,
+            })
+            last_desc = None
+            group = []
+            out.append(i)
+        elif "description" in i and not last_desc:
+            last_desc = i["description"]
+            group = []
+            group.append(i)
+        elif i["description"] != last_desc:
+            s = datetime.timedelta()
+            for g in group:
+                s += g["duration"]
+            out.append({
+                "start": group[0]["start"],
+                "duration": s,
+                "name": last_desc,
+                "group": group,
+            })
+            last_desc = i["description"]
+            group = []
+            group.append(i)
+        else:
+            group.append(i)
+    if group:
+        s = datetime.timedelta()
+        for g in group:
+            s += g["duration"]
+        out.append({
+            "start": group[0]["start"],
+            "duration": s,
+            "name": last_desc,
+            "group": group,
+        })
+    return out
+
+
 if __name__ == '__main__':
     main()
