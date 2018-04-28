@@ -63,6 +63,7 @@ def main():
     patterns = get_patterns()
     times = process_stream(stream, patterns, idle_time=args.idle)
     times = enrich_stream(times, patterns)
+    append_metadata(date, times)
     # todo estimate sleep time
     times.sort(key=lambda x: x["start"])
     if args.stream:
@@ -85,6 +86,9 @@ def main():
     print("-" * 10)
     tag_analysis, tagged = analyze_tags(times, patterns)
     print_tag_summary(tag_analysis, tagged, logged_time, args)
+    print("-" * 10)
+    groups = create_groups(times)
+    print_group_analysis(analyze_groups(groups, patterns), args)
     print("-" * 10)
     if args.sum:
         print("{}: {}s".format(args.sum, human_time_diff(time_sum)))
@@ -497,6 +501,37 @@ def create_groups(times):
             "group": group,
         })
     return out
+
+
+def analyze_groups(groups, patterns):
+    summary = {}
+    for i in groups:
+        if "group" not in i:
+            continue
+        name = i["name"]
+        if name not in summary:
+            summary[name] = {
+                "duration": datetime.timedelta(0),
+                "cnt": 0,
+                "records": []
+            }
+        summary[name]["cnt"] += 1
+        summary[name]["duration"] += i["duration"]
+        summary[name]["records"] += i["group"]
+    for i in summary:
+        summary[i]["tags"] = analyze_tags(summary[i]["records"], patterns)
+    return sorted(summary.items(), key=lambda x: x[1]["duration"])
+
+
+def print_group_analysis(groups, args):
+    print("{: <20}\t{: <12}\t{: <5}".format("name", "duration", "cnt"))
+    for n, g in groups:
+        print("{: <20}\t{: <12}\t{: <5}".format(
+            n,
+            human_time_diff(g["duration"]),
+            g["cnt"]))
+        # todo some params to filter and format
+        print_tag_summary(g["tags"][0], g["tags"][1], g["duration"], args)
 
 
 if __name__ == '__main__':

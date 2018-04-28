@@ -1,7 +1,7 @@
 version: '2'
 services:
   web:
-    build: .
+    build: web
     ports:
     - "80:5000"
     volumes:
@@ -9,12 +9,12 @@ services:
     depends_on:
     - sass
   dev:
-    build: .
+    build: web
     ports:
     - "80:80"
     volumes:
-    - .:/app
-    - ../analysis:/app/analysis
+    - ./web:/app
+    - ./analysis:/app/analysis
     - ~/stalker:/root/stalker
     environment:
     - FLASK_DEBUG=1
@@ -25,11 +25,11 @@ services:
   sass:
     image: ubuntudesign/sass
     volumes:
-    - ./static/css/:/app
+    - ./web/static/css/:/app
     command: sass /app/style.scss style.css
   sass_watch:
     image: ubuntudesign/sass
     volumes:
-    - ./static/css/:/app
+    - ./web/static/css/:/app
     command: sass --watch /app
 
