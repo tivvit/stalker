@@ -37,6 +37,8 @@ def main():
                     help="Only > time [s] in summary")
     ap.add_argument("-idl", "--idle", type=int, default=60 * 10 ** 3,
                     help="> x ms is considered idle")
+    ap.add_argument("-gtpl", "--group_tag_percent_limit", type=int, default=50,
+                    help="show tags bigger then defined percent")
     ap.add_argument("-ss", "--save_stream", help="filename stream json")
     args = ap.parse_args()
     date = args.day
@@ -416,24 +418,26 @@ def analyze_tags(stream, patterns):
                   reverse=True), tagged
 
 
-def print_tag_summary(summary, tagged, logged_time, args):
-    print("Tagged: {} ({:.2f}%)".format(human_time_diff(tagged),
-                                        (tagged / logged_time) * 100))
-    print("-" * 10)
-    print("{: <20}\t{: <12}\t{: <8}\t{: <6}\t{: <10}\t{: <10}".format(
-        "tag", "duration", "percent", "cnt", "idle", "idle perc"))
+def print_tag_summary(summary, tagged, logged_time, args, limit=0, prefix=""):
+    print("{}Tagged: {} ({:.2f}%)".format(prefix, human_time_diff(tagged),
+                                          (tagged / logged_time) * 100))
+    print("{}{}".format(prefix, "-" * 10))
+    print("{}{: <20}\t{: <12}\t{: <8}\t{: <6}\t{: <10}\t{: <10}".format(
+        prefix, "tag", "duration", "percent", "cnt", "idle", "idle perc"))
     for t, v in summary:
         duration = v["duration"]
         perc = ((duration + v["idle"]) / logged_time) * 100
-        print("{: <20}\t{: <12}\t{:>5.2f} % \t{: <6}\t{: <12}\t{:.2f} "
+        if perc < limit:
+            continue
+        print("{}{: <20}\t{: <12}\t{:>5.2f} % \t{: <6}\t{: <12}\t{:.2f} "
               "%".format(
-            t, human_time_diff(duration), perc, len(v["samples"]),
+            prefix, t, human_time_diff(duration), perc, len(v["samples"]),
             human_time_diff(v["idle"]),
             (v["idle"] / (v["idle"] + duration)) * 100))
         if args.no_tag_samples:
             continue
         for s in v["samples"][:args.count_tag_samples]:
-            print("\t{}\t{}".format(human_time_diff(s[1]), s[0]))
+            print("{}\t{}\t{}".format(prefix, human_time_diff(s[1]), s[0]))
 
 
 def append_metadata(date, times):
@@ -530,8 +534,8 @@ def print_group_analysis(groups, args):
             n,
             human_time_diff(g["duration"]),
             g["cnt"]))
-        # todo some params to filter and format
-        print_tag_summary(g["tags"][0], g["tags"][1], g["duration"], args)
+        print_tag_summary(g["tags"][0], g["tags"][1], g["duration"], args,
+                          limit=args.group_tag_percent_limit, prefix="\t")
 
 
 if __name__ == '__main__':
