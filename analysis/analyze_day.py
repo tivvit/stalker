@@ -572,7 +572,7 @@ def analyze_groups(groups, patterns):
 
     for i in summary:
         summary[i]["tags"] = analyze_tags(summary[i]["records"], patterns)
-    return sorted(summary.items(), key=lambda x: x[1]["duration"])
+    return sorted(summary.items(), key=lambda x: x[1]["duration"], reverse=True)
 
 
 def print_group_analysis(groups, args):
