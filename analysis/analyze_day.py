@@ -37,6 +37,10 @@ def main():
                     help="Only > time [s] in summary")
     ap.add_argument("-idl", "--idle", type=int, default=60 * 10 ** 3,
                     help="> x ms is considered idle")
+    ap.add_argument("-gtpl", "--group_tag_percent_limit", type=int, default=50,
+                    help="show tags bigger then defined percent")
+    ap.add_argument("-pr", "--private", action='store_true',
+                    help="Show private events")
     ap.add_argument("-ss", "--save_stream", help="filename stream json")
     args = ap.parse_args()
     date = args.day
@@ -64,6 +68,7 @@ def main():
     times = process_stream(stream, patterns, idle_time=args.idle)
     times = enrich_stream(times, patterns)
     append_metadata(date, times)
+    times = privates(times)
     # todo estimate sleep time
     times.sort(key=lambda x: x["start"])
     if args.stream:
@@ -231,6 +236,8 @@ def print_summary(args, logged_time, summary):
     summary = summary[:args.summary_k] if args.summary_k else summary
     print("{: <12}\tpercent\tchunks\tavg chunk\tavg idle\tname".format("time"))
     for k, v in summary:
+        if not args.private and v["private"]:
+            continue
         duration = v.get("duration", datetime.timedelta())
         perc = (duration / logged_time) * 100
         if args.summary_pct and perc <= args.summary_pct:
@@ -269,12 +276,16 @@ def get_summary(args, times, patterns):
                 "groups_cnt": 0,
                 "idle_sum": 0,
                 "sources": set(),
+                "private": False
             }
         summary[name]["duration"] += record["duration"]
         summary[name]["cnt"] += record.get("cnt", 1)
         summary[name]["groups_cnt"] += 1
         summary[name]["idle_sum"] += record.get("idle_sum", 0)
         summary[name]["sources"].add(record.get("source", "Unknown"))
+        if not summary[name]["private"]:
+            # if private keep private
+            summary[name]["private"] = record.get("private", False)
     summary = sorted(summary.items(),
                      key=lambda x: x[1].get("duration",
                                             datetime.timedelta()),
@@ -286,6 +297,8 @@ def print_stream(args, times, patterns):
     for record in times:
         short = is_short(args, record)
         if not args.ignore or not short:
+            if not args.private and record.get("private", False):
+                continue
             print("{} {} {}: {}".format(
                 record["start"].strftime("%H:%M:%S"),
                 record["source"],
@@ -401,9 +414,15 @@ def analyze_tags(stream, patterns):
                 }
             n = get_name(i["item"], patterns, i["idle"])
             if n not in d[t]["samples"]:
-                d[t]["samples"][n] = i["duration"]
+                d[t]["samples"][n] = {
+                    "duration": i["duration"],
+                    "private": False,
+                }
             else:
-                d[t]["samples"][n] += i["duration"]
+                d[t]["samples"][n]["duration"] += i["duration"]
+
+            if not d[t]["samples"][n]["private"]:
+                d[t]["samples"][n]["private"] = i.get("private", False)
 
             if i["idle"]:
                 d[t]["idle"] += i["duration"]
@@ -411,30 +430,37 @@ def analyze_tags(stream, patterns):
                 d[t]["duration"] += i["duration"]
     for t, v in d.items():
         v["samples"] = sorted(v["samples"].items(),
-                              key=lambda x: x[1],
+                              key=lambda x: x[1]["duration"],
                               reverse=True)
     return sorted(d.items(), key=lambda x: x[1]["duration"] + x[1]["idle"],
                   reverse=True), tagged
 
 
-def print_tag_summary(summary, tagged, logged_time, args):
-    print("Tagged: {} ({:.2f}%)".format(human_time_diff(tagged),
-                                        (tagged / logged_time) * 100))
-    print("-" * 10)
-    print("{: <20}\t{: <12}\t{: <8}\t{: <6}\t{: <10}\t{: <10}".format(
-        "tag", "duration", "percent", "cnt", "idle", "idle perc"))
+def print_tag_summary(summary, tagged, logged_time, args, limit=0, prefix=""):
+    print("{}Tagged: {} ({:.2f}%)".format(prefix, human_time_diff(tagged),
+                                          (tagged / logged_time) * 100))
+    print("{}{}".format(prefix, "-" * 10))
+    print("{}{: <20}\t{: <12}\t{: <8}\t{: <6}\t{: <10}\t{: <10}".format(
+        prefix, "tag", "duration", "percent", "cnt", "idle", "idle perc"))
     for t, v in summary:
+        if not args.private and t.startswith("XX "):
+            continue
         duration = v["duration"]
         perc = ((duration + v["idle"]) / logged_time) * 100
-        print("{: <20}\t{: <12}\t{:>5.2f} % \t{: <6}\t{: <12}\t{:.2f} "
+        if perc < limit:
+            continue
+        print("{}{: <20}\t{: <12}\t{:>5.2f} % \t{: <6}\t{: <12}\t{:.2f} "
               "%".format(
-            t, human_time_diff(duration), perc, len(v["samples"]),
+            prefix, t, human_time_diff(duration), perc, len(v["samples"]),
             human_time_diff(v["idle"]),
             (v["idle"] / (v["idle"] + duration)) * 100))
         if args.no_tag_samples:
             continue
         for s in v["samples"][:args.count_tag_samples]:
-            print("\t{}\t{}".format(human_time_diff(s[1]), s[0]))
+            if not args.private and s[1].get("private", False):
+                continue
+            print("{}\t{}\t{}".format(
+                prefix, human_time_diff(s[1]["duration"]), s[0]))
 
 
 def append_metadata(date, times):
@@ -449,6 +475,8 @@ def append_metadata(date, times):
             continue
         timestamp = str(i["start"].timestamp())
         if timestamp in metadata[src]:
+            if "tags" in i and "tags" in metadata[src][timestamp]:
+                metadata[src][timestamp]["tags"] += i["tags"]
             i.update(metadata[src][timestamp])
 
 
@@ -463,12 +491,19 @@ def create_groups(times):
             s = datetime.timedelta()
             for g in group:
                 s += g["duration"]
-            out.append({
+            r = {
                 "start": group[0]["start"],
                 "duration": s,
                 "name": last_desc,
                 "group": group,
-            })
+            }
+            if r["name"].startswith("XX"):
+                r.update({
+                    # remove "XX "
+                    # "name": r["name"][3:],
+                    "private": True,
+                })
+            out.append(r)
             last_desc = None
             group = []
             out.append(i)
@@ -480,12 +515,19 @@ def create_groups(times):
             s = datetime.timedelta()
             for g in group:
                 s += g["duration"]
-            out.append({
+            r = {
                 "start": group[0]["start"],
                 "duration": s,
                 "name": last_desc,
                 "group": group,
-            })
+            }
+            if r["name"].startswith("XX"):
+                r.update({
+                    # remove "XX "
+                    # "name": r["name"][3:],
+                    "private": True,
+                })
+            out.append(r)
             last_desc = i["description"]
             group = []
             group.append(i)
@@ -495,12 +537,20 @@ def create_groups(times):
         s = datetime.timedelta()
         for g in group:
             s += g["duration"]
-        out.append({
+        r = {
             "start": group[0]["start"],
             "duration": s,
             "name": last_desc,
             "group": group,
-        })
+        }
+        if r["name"].startswith("XX"):
+            r.update({
+                # remove "XX "
+                # "name": r["name"][3:],
+                "private": True,
+            })
+        out.append(r)
+
     return out
 
 
@@ -514,25 +564,40 @@ def analyze_groups(groups, patterns):
             summary[name] = {
                 "duration": datetime.timedelta(0),
                 "cnt": 0,
-                "records": []
+                "records": [],
             }
         summary[name]["cnt"] += 1
         summary[name]["duration"] += i["duration"]
         summary[name]["records"] += i["group"]
+        summary[name]["private"] = i.get("private", False)
+
     for i in summary:
         summary[i]["tags"] = analyze_tags(summary[i]["records"], patterns)
-    return sorted(summary.items(), key=lambda x: x[1]["duration"])
+    return sorted(summary.items(), key=lambda x: x[1]["duration"], reverse=True)
 
 
 def print_group_analysis(groups, args):
     print("{: <20}\t{: <12}\t{: <5}".format("name", "duration", "cnt"))
     for n, g in groups:
+        if not args.private and g["private"]:
+            continue
         print("{: <20}\t{: <12}\t{: <5}".format(
             n,
             human_time_diff(g["duration"]),
             g["cnt"]))
-        # todo some params to filter and format
-        print_tag_summary(g["tags"][0], g["tags"][1], g["duration"], args)
+        print_tag_summary(g["tags"][0], g["tags"][1], g["duration"], args,
+                          limit=args.group_tag_percent_limit, prefix="\t")
+
+
+def privates(times):
+    for r in times:
+        if "description" in r and r["description"].startswith("XX "):
+            r["private"] = True
+        for t in r["tags"]:
+            if t.startswith("XX "):
+                r["private"] = True
+                break
+    return times
 
 
 if __name__ == '__main__':

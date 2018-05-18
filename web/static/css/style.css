@@ -45,6 +45,12 @@ body {
 .hidden {
   display: none !important; }
 
+.private {
+  display: none !important; }
+
+.private_show {
+  border: 1px solid pink; }
+
 .group {
   padding-left: 2em; }
 

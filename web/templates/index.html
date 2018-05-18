@@ -43,8 +43,8 @@
                             group_parent{% endif %}
                         {% if record['idle'] %}idle{% endif %}
                         {% if record['hidden'] %}hidden{% endif %}">
-                    <div class="prop start">{{ record["start"].strftime("%H:%M:%S")
-                        }}
+                    <div class="prop start">
+                        {{ record["start"].strftime("%H:%M:%S") }}
                     </div>
                     <div class="prop duration"
                          data-duration="{{ record['duration'].total_seconds() }}">
@@ -108,8 +108,10 @@
     <div class="row">
         <div class="button" id="tag">tag</div>
         <div class="button" id="describe">describe</div>
-        <div class="button" id="undescribe">undescribe</div>
+        <div class="button" id="undescribe">-describe</div>
         <div class="button" id="hide">hide</div>
+        <div class="button" id="private">pr</div>
+        <div class="button" id="unprivate">-pr</div>
         <div class="button" id="all">all</div>
         <div class="button" id="clear">clear</div>
     </div>

@@ -16,6 +16,7 @@ from analysis.analyze_day import get_name
 from analysis.analyze_day import get_patterns
 from analysis.analyze_day import append_metadata
 from analysis.analyze_day import create_groups
+from analysis.analyze_day import privates
 
 app = Flask(__name__)
 data_path = "/root/stalker/"
@@ -54,6 +55,7 @@ def main_date(date):
     times = process_stream(stream, patterns)
     times = enrich_stream(times, patterns)
     append_metadata(date, times)
+    times = privates(times)
     times = create_groups(times)
     times.sort(key=lambda x: x["start"])
     sources = []
@@ -78,6 +80,7 @@ def main_date(date):
                     "id": "{}$-${}".format(g.get("source", "Unknown "),
                                            g["start"].timestamp()),
                 })
+<<<<<<< HEAD
     return render_template(
         'index.html',
         data=times,
@@ -89,6 +92,10 @@ def main_date(date):
             "Unknown": "gray",
         }
     )
+=======
+    return render_template('index.html', data=times, date=date,
+                           private=bool(request.args.get('p', False)))
+>>>>>>> 819be3952ca4f7ef9c62588f42b10c4ede1236b3
 
 
 @app.route("/hide", methods=["POST"])
@@ -175,6 +182,48 @@ def undescribe():
         if timestamp not in metadata[source]:
             metadata[source][timestamp] = {}
         metadata[source][timestamp].pop("description", None)
+    json.dump(metadata, open(filename, "w"))
+    return ""
+
+
+@app.route("/private", methods=["POST"])
+def private():
+    data = request.json
+    filename = os.path.join(data_path,
+                            "{}{}".format(data["date"], ".metadata.json"))
+    metadata = {}
+    if os.path.exists(filename):
+        metadata = json.load(open(filename, "r"))
+    for i in data["items"]:
+        source, timestamp = i.split("$-$")
+        if source not in metadata:
+            metadata[source] = {}
+        if timestamp not in metadata[source]:
+            metadata[source][timestamp] = {}
+        metadata[source][timestamp].update({
+            "private": True,
+        })
+    json.dump(metadata, open(filename, "w"))
+    return ""
+
+
+@app.route("/unprivate", methods=["POST"])
+def unprivate():
+    data = request.json
+    filename = os.path.join(data_path,
+                            "{}{}".format(data["date"], ".metadata.json"))
+    metadata = {}
+    if os.path.exists(filename):
+        metadata = json.load(open(filename, "r"))
+    for i in data["items"]:
+        source, timestamp = i.split("$-$")
+        if source not in metadata:
+            metadata[source] = {}
+        if timestamp not in metadata[source]:
+            metadata[source][timestamp] = {}
+        metadata[source][timestamp].update({
+            "private": False,
+        })
     json.dump(metadata, open(filename, "w"))
     return ""
 

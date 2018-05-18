@@ -48,6 +48,49 @@ document.getElementById("hide").onclick = function (ev) {
     selectedItems = [];
 };
 
+document.getElementById("private").onclick = function (ev) {
+    selectedItems.forEach(function (value) {
+        var elem = document.getElementById(value);
+        elem.classList.add("hidden");
+        elem.classList.remove("active")
+    });
+    var xhr = new XMLHttpRequest();
+    xhr.open("POST", "/private", true);
+    xhr.setRequestHeader("Content-Type", "application/json");
+    xhr.onreadystatechange = function () {
+        if (xhr.readyState === 4 && xhr.status !== 200) {
+            console.log(xhr.status, xhr.responseText);
+        }
+    };
+    var data = JSON.stringify({
+        "date": document.getElementById("date").value,
+        "items": selectedItems
+    });
+    xhr.send(data);
+    selectedItems = [];
+};
+
+document.getElementById("unprivate").onclick = function (ev) {
+    selectedItems.forEach(function (value) {
+        var elem = document.getElementById(value);
+        elem.classList.remove("active")
+    });
+    var xhr = new XMLHttpRequest();
+    xhr.open("POST", "/unprivate", true);
+    xhr.setRequestHeader("Content-Type", "application/json");
+    xhr.onreadystatechange = function () {
+        if (xhr.readyState === 4 && xhr.status !== 200) {
+            console.log(xhr.status, xhr.responseText);
+        }
+    };
+    var data = JSON.stringify({
+        "date": document.getElementById("date").value,
+        "items": selectedItems
+    });
+    xhr.send(data);
+    selectedItems = [];
+};
+
 document.getElementById("clear").onclick = function (ev) {
     clear();
 };
