@@ -139,6 +139,7 @@ def process_stream(stream, patterns, idle_time=60 * 10 ** 3):
                 "timestamp": ci["last"]["timestamp"],
                 "proc": "None",
                 "title": "",
+                "source": "Unknown",
             }))
             if ci["active"]:
                 # close last active record
