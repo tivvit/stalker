@@ -169,8 +169,8 @@ document.getElementById("sm-filt").addEventListener("change", function (el) {
 
 document.querySelectorAll(".group_parent").forEach(function (value) {
     value.addEventListener("click", function (el) {
-        console.log(this.parentElement.querySelectorAll(".group").forEach(function (value2) {
+        this.parentElement.parentElement.querySelectorAll(".group").forEach(function (value2) {
             value2.classList.toggle("hidden");
-        }))
+        })
     });
 });

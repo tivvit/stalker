@@ -56,13 +56,17 @@ def main_date(date):
     append_metadata(date, times)
     times = create_groups(times)
     times.sort(key=lambda x: x["start"])
-    # todo detect sources
+    sources = []
+    for i in times:
+        src = i.get("source", "Unknown")
+        if src not in sources:
+            sources.append(src)
     # times = [i for i in times if i["duration"] > datetime.timedelta(seconds=2)]
     for i in times:
         i.update({
             "name": get_name(i["item"], patterns) if "group" not in i else i[
                 "name"],
-            "id": "{}$-${}".format(i.get("source", "Unknown "),
+            "id": "{}$-${}".format(i.get("source", "Unknown"),
                                    i["start"].timestamp()),
         })
     # todo hotfix
@@ -74,7 +78,17 @@ def main_date(date):
                     "id": "{}$-${}".format(g.get("source", "Unknown "),
                                            g["start"].timestamp()),
                 })
-    return render_template('index.html', data=times, date=date)
+    return render_template(
+        'index.html',
+        data=times,
+        date=date,
+        sources=sources,
+        source_colors={
+            "ntb": "red",
+            "pc": "green",
+            "Unknown": "gray",
+        }
+    )
 
 
 @app.route("/hide", methods=["POST"])

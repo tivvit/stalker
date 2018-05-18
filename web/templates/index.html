@@ -5,6 +5,13 @@
     <link rel="stylesheet" type="text/css"
           href="{{ url_for('static', filename='css/style.css') }}">
     <title>Stalker</title>
+    <style>
+        {% for src, color in source_colors.items() %}
+            .{{ src }} {
+                background-color: {{ color }};
+            }
+        {% endfor %}
+    </style>
 </head>
 
 <body>
@@ -20,50 +27,72 @@
     <div id="selectable" class="list">
         {% for record in data %}
         <div class="entry-wrap">
-            <div id="{{ record['id'] }}"
-                 class="entry
-                    {% if 'group' not in record %}record{% else %}
-                        group_parent{% endif %}
-                    {% if record['idle'] %}idle{% endif %}
-                    {% if record['hidden'] %}hidden{% endif %}">
-                <div class="prop start">{{ record["start"].strftime("%H:%M:%S")
-                    }}
-                </div>
-                <div class="prop duration"
-                     data-duration="{{ record['duration'].total_seconds() }}">
-                    {{ record["duration"] | timediff }}
-                </div>
-                <div class="prop name">{{ record["name"] }}</div>
-                <div class="prop tags">
-                    {% for tag in record.get("tags", []) %}
-                    <div class="tag">{{ tag }}</div>
+            <div class="entry-group">
+                <div class="source-dots">
+                    {% for src in sources %}
+                        {% if src == record["source"] %}
+                            <div class="dot {{ src }}"></div>
+                        {% else %}
+                            <div class="dot none"></div>
+                        {% endif %}
                     {% endfor %}
                 </div>
-                <div class="prop source">{{ record["source"] }}</div>
-            </div>
-            {% if record["group"] %}
-                <div class="group hidden">
-                    {% for g_record in record["group"] %}
-                        <div id="{{ g_record['id'] }}"   class="entry record
-                        {% if g_record['idle'] %}idle{% endif %}
-                        {% if g_record['hidden'] %}hidden{% endif %}">
-                    <div class="prop start">{{ g_record["start"].strftime("%H:%M:%S")
+                <div id="{{ record['id'] }}"
+                     class="entry
+                        {% if 'group' not in record %}record{% else %}
+                            group_parent{% endif %}
+                        {% if record['idle'] %}idle{% endif %}
+                        {% if record['hidden'] %}hidden{% endif %}">
+                    <div class="prop start">{{ record["start"].strftime("%H:%M:%S")
                         }}
                     </div>
                     <div class="prop duration"
                          data-duration="{{ record['duration'].total_seconds() }}">
-                        {{ g_record["duration"] | timediff }}
+                        {{ record["duration"] | timediff }}
                     </div>
-                    <div class="prop name">{{ g_record["name"] }}</div>
+                    <div class="prop name">{{ record["name"] }}</div>
                     <div class="prop tags">
-                        {% for tag in g_record.get("tags", []) %}
+                        {% for tag in record.get("tags", []) %}
                             <div class="tag">{{ tag }}</div>
                         {% endfor %}
                     </div>
-                    <div class="prop source">{{ g_record["source"] }}</div>
+                    <!--<div class="prop source">{{ record["source"] }}</div>-->
                 </div>
-                {% endfor %}
             </div>
+            {% if record["group"] %}
+                <div class="group hidden">
+                    {% for g_record in record["group"] %}
+                        <div class="entry-group">
+                            <div class="source-dots">
+                                {% for src in sources %}
+                                    {% if src == g_record["source"] %}
+                                        <div class="dot {{ src }}"></div>
+                                    {% else %}
+                                        <div class="dot none"></div>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                            <div id="{{ g_record['id'] }}"   class="entry record
+                                {% if g_record['idle'] %}idle{% endif %}
+                                {% if g_record['hidden'] %}hidden{% endif %}">
+                                <div class="prop start">
+                                    {{ g_record["start"].strftime("%H:%M:%S") }}
+                                </div>
+                                <div class="prop duration"
+                                     data-duration="{{ record['duration'].total_seconds() }}">
+                                    {{ g_record["duration"] | timediff }}
+                                </div>
+                                <div class="prop name">{{ g_record["name"] }}</div>
+                                <div class="prop tags">
+                                    {% for tag in g_record.get("tags", []) %}
+                                        <div class="tag">{{ tag }}</div>
+                                    {% endfor %}
+                                </div>
+                                <!--<div class="prop source">{{ g_record["source"] }}</div>-->
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
             {% endif %}
         </div>
         {% endfor %}
@@ -84,7 +113,16 @@
         <div class="button" id="all">all</div>
         <div class="button" id="clear">clear</div>
     </div>
+    <div id="sources">
+        {% for src in sources %}
+            <div class="source">
+                <div class="dot {{ src }}"></div>
+                <span>{{ src }}</span>
+            </div>
+        {% endfor %}
+    </div>
 </div>
+
 
 <script type="text/javascript"
         src="https://unpkg.com/selectable.js@latest/selectable.min.js"></script>

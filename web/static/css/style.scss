@@ -70,37 +70,77 @@ body {
   border: 2px solid rgb(65, 157, 213);
 }
 
-.entry {
+.entry-wrap {
   display: flex;
-  background-color: rgba(230, 230, 230, 0.76);
-  border-radius: .4em;
-  margin-bottom: 4px;
-  padding: 2px;
+  flex-direction: column;
 
-  .start {
-    font-size: 11px;
-  }
-
-  .prop {
-    padding: 0 .2em;
-    flex: 1 1 0;
-    border-right: 1px solid rgba(175, 175, 175, 0.2);
-  }
-
-  .tags {
-    flex-grow: 3;
+  .entry-group {
     display: flex;
+    flex-direction: row;
+  }
 
-    .tag {
-      border-radius: .4em;
-      padding: 0 .4em;
-      margin-right: 0.2em;
-      font-size: 13px;
-      border: 1px solid rgba(0, 0, 0, 0.5);
+  .entry {
+    flex: 1 1 0;
+    display: flex;
+    background-color: rgba(230, 230, 230, 0.76);
+    border-radius: .4em;
+    margin-bottom: 4px;
+    padding: 2px;
+
+    .start {
+      font-size: 11px;
+    }
+
+    .prop {
+      padding: 0 .2em;
+      flex: 1 1 0;
+      border-right: 1px solid rgba(175, 175, 175, 0.2);
+    }
+
+    .tags {
+      flex-grow: 3;
+      display: flex;
+
+      .tag {
+        border-radius: .4em;
+        padding: 0 .4em;
+        margin-right: 0.2em;
+        font-size: 13px;
+        border: 1px solid rgba(0, 0, 0, 0.5);
+      }
+    }
+
+    .name {
+      flex-grow: 12;
     }
   }
 
-  .name {
-    flex-grow: 12;
+}
+
+.source-dots {
+  display: flex;
+}
+
+.dot {
+  width: 1em;
+  height: 1em;
+  margin: 0 .3em;
+  border-radius: 100%;
+  background-color: rgb(65, 157, 213);
+}
+
+.none {
+  background-color: transparent;
+}
+
+#sources {
+  display: flex;
+  padding: 1em;
+  background-color: rgba(255,255,255,.3);
+  border-radius: .2em;
+
+  .source {
+    display: flex;
+    padding-right: 1em;
   }
 }
