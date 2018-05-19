@@ -80,22 +80,18 @@ def main_date(date):
                     "id": "{}$-${}".format(g.get("source", "Unknown "),
                                            g["start"].timestamp()),
                 })
-<<<<<<< HEAD
     return render_template(
         'index.html',
         data=times,
         date=date,
         sources=sources,
+        private=bool(request.args.get('p', False)),
         source_colors={
             "ntb": "red",
             "pc": "green",
             "Unknown": "gray",
         }
     )
-=======
-    return render_template('index.html', data=times, date=date,
-                           private=bool(request.args.get('p', False)))
->>>>>>> 819be3952ca4f7ef9c62588f42b10c4ede1236b3
 
 
 @app.route("/hide", methods=["POST"])
