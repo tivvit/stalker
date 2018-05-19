@@ -1,0 +1,23 @@
+{
+  "short_name": "Stalker",
+  "name": "Stalker",
+  "icons": [
+    {
+      "src": "/static/img/logo.png",
+      "type": "image/png",
+      "sizes": "48x48"
+    },
+    {
+      "src": "/static/img/logo.png",
+      "type": "image/png",
+      "sizes": "96x96"
+    },
+    {
+      "src": "/static/img/logo.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    }
+  ],
+  "start_url": "/",
+  "display": "standalone"
+}
