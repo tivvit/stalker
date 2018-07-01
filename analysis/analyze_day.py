@@ -2,8 +2,12 @@ import argparse
 import datetime
 import json
 import os
-from glob import glob
 import re
+from glob import glob
+
+import pytz
+
+import toggl
 
 try:
     from . import config
@@ -52,11 +56,14 @@ def main():
         date = datetime.datetime.strftime(
             now - datetime.timedelta(days=args.day_back),
             "%y-%m-%d")
+    print("-" * 10)
     print("Day {}".format(date))
+    date_parsed = datetime.datetime.strptime(date, "%y-%m-%d")
+    yesterday = date_parsed + datetime.timedelta(days=-1)
     day_filename = os.path.join(config.base_path, date)
     stream = load_stream(day_filename, no_delete_morning=args.no_delete_morning)
     if not args.ignore_next_day:
-        next_day = datetime.datetime.strptime(date, "%y-%m-%d") + \
+        next_day = date_parsed + \
                    datetime.timedelta(days=1)
         day_filename = os.path.join(config.base_path,
                                     next_day.strftime("%y-%m-%d"))
@@ -68,6 +75,11 @@ def main():
     times = process_stream(stream, patterns, idle_time=args.idle)
     times = enrich_stream(times, patterns)
     append_metadata(date, times)
+    print("-" * 10)
+    if config.toggl_api_key:
+        print("Fetching Toggl", end='')
+        times += toggl.toggl(yesterday, date_parsed, config.toggl_api_key)
+        print(" DONE")
     times = privates(times)
     # todo estimate sleep time
     times.sort(key=lambda x: x["start"])
@@ -363,7 +375,7 @@ def human_time_diff(diff):
 
 
 def parse_time(entry):
-    return datetime.datetime.fromtimestamp(entry["timestamp"])
+    return datetime.datetime.fromtimestamp(entry["timestamp"], tz=pytz.utc)
 
 
 def get_name(entry, patterns, idle=False):
