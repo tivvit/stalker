@@ -56,10 +56,10 @@ class Gcal(object):
         if not events_result:
             return events
         for ev in events_result:
-            events.append(self.convert_to_event(ev, cal="Sleep"))
+            events.append(self.convert_to_event(ev, cal="Sleep", idle=True))
         return events
 
-    def convert_to_event(self, cal_event, cal=None):
+    def convert_to_event(self, cal_event, cal=None, idle=False):
         event_start = cal_event['start'].get('dateTime',
                                              cal_event['start'].get('date'))
         event_start = ciso8601.parse_datetime(event_start)
@@ -75,7 +75,7 @@ class Gcal(object):
             "duration": event_end - event_start,
             "tags": ["gcal"] + ([cal] if cal else []),
             "source": "gcal",
-            "idle": False,
+            "idle": idle,
         }
 
     def create_event(self):
