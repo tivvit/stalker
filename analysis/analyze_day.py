@@ -59,13 +59,17 @@ def main():
             "%y-%m-%d")
     print("-" * 10)
     print("Day {}".format(date))
-    date_parsed = datetime.datetime.strptime(date, "%y-%m-%d")
+    # todo dermine when day started and ended
+    # todo add that to the day stats
+    tz = datetime.datetime.utcnow().astimezone().tzinfo
+    date_parsed = datetime.datetime.strptime(
+        date, "%y-%m-%d").replace(minute=0, hour=0, second=0, tzinfo=tz)
     yesterday = date_parsed + datetime.timedelta(days=-1)
+    next_day = date_parsed + datetime.timedelta(days=1)
     day_filename = os.path.join(config.base_path, date)
+    # todo day start
     stream = load_stream(day_filename, no_delete_morning=args.no_delete_morning)
     if not args.ignore_next_day:
-        next_day = date_parsed + \
-                   datetime.timedelta(days=1)
         day_filename = os.path.join(config.base_path,
                                     next_day.strftime("%y-%m-%d"))
         stream += load_stream(day_filename, only_morning=True)
@@ -82,17 +86,13 @@ def main():
         times += toggl.toggl(yesterday, date_parsed, config.toggl_api_key)
         print(" DONE")
     gcal = Gcal()
-    tz = datetime.datetime.utcnow().astimezone().tzinfo
-    date_time_parsed = date_parsed.replace(minute=0, hour=0,
-                                           second=0, tzinfo=tz)
-    end = (date_time_parsed + datetime.timedelta(days=1)).isoformat()
     print("Fetching Gcal", end='')
-    times += gcal.events(config.calendars, date_time_parsed.isoformat(), end)
+    times += gcal.events(config.calendars, date_parsed.isoformat(), next_day)
     print(" DONE")
     if config.sleep_calendar:
         print("Fetching sleep from Gcal", end='')
         times += gcal.get_sleep(config.sleep_calendar,
-                                date_time_parsed.isoformat(), end)
+                                date_parsed.isoformat(), next_day)
         print(" DONE")
     times = privates(times)
     times.sort(key=lambda x: x["start"])
