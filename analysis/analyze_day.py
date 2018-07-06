@@ -87,12 +87,13 @@ def main():
         print(" DONE")
     gcal = Gcal()
     print("Fetching Gcal", end='')
-    times += gcal.events(config.calendars, date_parsed.isoformat(), next_day)
+    times += gcal.events(config.calendars, date_parsed.isoformat(),
+                         next_day.isoformat())
     print(" DONE")
     if config.sleep_calendar:
         print("Fetching sleep from Gcal", end='')
         times += gcal.get_sleep(config.sleep_calendar,
-                                date_parsed.isoformat(), next_day)
+                                date_parsed.isoformat(), next_day.isoformat())
         print(" DONE")
     times = privates(times)
     times.sort(key=lambda x: x["start"])
