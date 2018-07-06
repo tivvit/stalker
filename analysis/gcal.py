@@ -52,7 +52,8 @@ class Gcal(object):
             timeMin=start,
             timeMax=end,
             maxResults=10,
-            singleEvents=True).execute().get("items", [])
+            singleEvents=True,
+            orderBy='startTime').execute().get("items", [])
         if not events_result:
             return events
         for ev in events_result:

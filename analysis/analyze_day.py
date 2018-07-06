@@ -5,8 +5,6 @@ import os
 import re
 from glob import glob
 
-import pytz
-
 import toggl
 from gcal import Gcal
 
@@ -49,25 +47,46 @@ def main():
     ap.add_argument("-ss", "--save_stream", help="filename stream json")
     args = ap.parse_args()
     date = args.day
-    if not args.day:
-        now = datetime.datetime.now()
+    tz = datetime.datetime.utcnow().astimezone().tzinfo
+    now = datetime.datetime.now().replace(tzinfo=tz)
+    is_morning = False
+    if not date:
+        day = now
         # working over midnight - want to see "today"
         if now.time() < config.morning:
-            now -= datetime.timedelta(days=1)
-        date = datetime.datetime.strftime(
-            now - datetime.timedelta(days=args.day_back),
-            "%y-%m-%d")
-    print("-" * 10)
-    print("Day {}".format(date))
-    # todo dermine when day started and ended
-    # todo add that to the day stats
-    tz = datetime.datetime.utcnow().astimezone().tzinfo
-    date_parsed = datetime.datetime.strptime(
-        date, "%y-%m-%d").replace(minute=0, hour=0, second=0, tzinfo=tz)
-    yesterday = date_parsed + datetime.timedelta(days=-1)
-    next_day = date_parsed + datetime.timedelta(days=1)
+            day -= datetime.timedelta(days=1)
+            is_morning = True
+        day -= datetime.timedelta(days=args.day_back)
+        date = datetime.datetime.strftime(day, "%y-%m-%d")
+    else:
+        day = datetime.datetime.strptime(date, "%y-%m-%d")
+    day = day.replace(minute=0, hour=0, second=0, tzinfo=tz)
+    gcal = Gcal()
+    yesterday = day + datetime.timedelta(days=-1)
+    next_day = day + datetime.timedelta(days=1)
     day_filename = os.path.join(config.base_path, date)
-    # todo day start
+    day_start = day
+    day_end = now
+    sleeps = []
+    if config.sleep_calendar:
+        print("Fetching sleep from Gcal", end='')
+        sleeps = gcal.get_sleep(config.sleep_calendar,
+                                day.isoformat(),
+                                next_day.isoformat())
+        if sleeps:
+            day_start = sleeps[0]["end"]
+        if now > next_day and not is_morning:
+            next_sleeps = gcal.get_sleep(config.sleep_calendar,
+                                         next_day.isoformat(),
+                                         (next_day + datetime.timedelta(
+                                             days=1)).isoformat())
+            if next_sleeps:
+                day_end = next_sleeps[0]["start"]
+                # remove next day sleep if present
+                for s in sleeps:
+                    if s["start"] == day_end:
+                        sleeps.remove(s)
+        print(" DONE")
     stream = load_stream(day_filename, no_delete_morning=args.no_delete_morning)
     if not args.ignore_next_day:
         day_filename = os.path.join(config.base_path,
@@ -80,23 +99,23 @@ def main():
     times = process_stream(stream, patterns, idle_time=args.idle)
     times = enrich_stream(times, patterns)
     append_metadata(date, times)
-    print("-" * 10)
     if config.toggl_api_key:
         print("Fetching Toggl", end='')
-        times += toggl.toggl(yesterday, date_parsed, config.toggl_api_key)
+        # todo only events between days start and end
+        times += toggl.toggl(yesterday, day, config.toggl_api_key)
         print(" DONE")
-    gcal = Gcal()
     print("Fetching Gcal", end='')
-    times += gcal.events(config.calendars, date_parsed.isoformat(),
-                         next_day.isoformat())
+    times += gcal.events(config.calendars, day_start.isoformat(),
+                         day_end.isoformat())
     print(" DONE")
-    if config.sleep_calendar:
-        print("Fetching sleep from Gcal", end='')
-        times += gcal.get_sleep(config.sleep_calendar,
-                                date_parsed.isoformat(), next_day.isoformat())
-        print(" DONE")
+    times += sleeps[1:]
     times = privates(times)
     times.sort(key=lambda x: x["start"])
+    print("-" * 10)
+    print("Day {} ({} - {}) {}".format(date,
+                                       day_start.strftime("%H:%M"),
+                                       day_end.strftime("%H:%M"),
+                                       human_time_diff(day_end - day_start)))
     if args.stream:
         print("-" * 10)
         print("STREAM")
@@ -108,6 +127,9 @@ def main():
     print("-" * 10)
     print("SUMMARY")
     logged_time, unknown_time, idle_time = logged_overall(times)
+    print("Sleep: {}".format(human_time_diff(
+        sum(map(lambda x: x["duration"], sleeps), datetime.timedelta(0)))))
+    # todo stats based on day start and end
     print("Logged: {}".format(human_time_diff(logged_time)))
     print("Idle: {}".format(human_time_diff(idle_time)))
     print("Unknown: {}".format(human_time_diff(unknown_time)))
