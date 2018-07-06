@@ -91,7 +91,8 @@ def main():
     print(" DONE")
     if config.sleep_calendar:
         print("Fetching sleep from Gcal", end='')
-        times += gcal.get_sleep(config.sleep_calendar, date_time_parsed.isoformat(), end)
+        times += gcal.get_sleep(config.sleep_calendar,
+                                date_time_parsed.isoformat(), end)
         print(" DONE")
     times = privates(times)
     times.sort(key=lambda x: x["start"])
