@@ -8,6 +8,7 @@ from glob import glob
 import pytz
 
 import toggl
+from gcal import Gcal
 
 try:
     from . import config
@@ -80,8 +81,19 @@ def main():
         print("Fetching Toggl", end='')
         times += toggl.toggl(yesterday, date_parsed, config.toggl_api_key)
         print(" DONE")
+    gcal = Gcal()
+    tz = datetime.datetime.utcnow().astimezone().tzinfo
+    date_time_parsed = date_parsed.replace(minute=0, hour=0,
+                                           second=0, tzinfo=tz)
+    end = (date_time_parsed + datetime.timedelta(days=1)).isoformat()
+    print("Fetching Gcal", end='')
+    times += gcal.events(config.calendars, date_time_parsed.isoformat(), end)
+    print(" DONE")
+    if config.sleep_calendar:
+        print("Fetching sleep from Gcal", end='')
+        times += gcal.get_sleep(config.sleep_calendar, date_time_parsed.isoformat(), end)
+        print(" DONE")
     times = privates(times)
-    # todo estimate sleep time
     times.sort(key=lambda x: x["start"])
     if args.stream:
         print("-" * 10)
@@ -375,7 +387,8 @@ def human_time_diff(diff):
 
 
 def parse_time(entry):
-    return datetime.datetime.fromtimestamp(entry["timestamp"], tz=pytz.utc)
+    tz = datetime.datetime.utcnow().astimezone().tzinfo
+    return datetime.datetime.fromtimestamp(entry["timestamp"], tz=tz)
 
 
 def get_name(entry, patterns, idle=False):

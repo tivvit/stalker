@@ -11,6 +11,8 @@ toggl_api_key = ""
 endomondo_username = ""
 endomondo_pass = ""
 endomondo_token = ""
+calendars = ["primary"]
+sleep_calendar = ""
 
 if os.path.exists(conf_file_path):
     print("Loading conf from {}".format(conf_file_path))
@@ -24,3 +26,7 @@ if os.path.exists(conf_file_path):
             endomondo_pass = conf.get("endomondo_pass", "")
         if "endomondo_token" in conf:
             endomondo_token = conf.get("endomondo_token", "")
+        if "calendars" in conf:
+            calendars = conf.get("calendars", "")
+        if "sleep_calendar" in conf:
+            sleep_calendar = conf.get("sleep_calendar", "")
