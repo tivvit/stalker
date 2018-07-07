@@ -1,5 +1,6 @@
 from endomondo.endomondo import MobileApi
-
+from datetime import timezone
+import datetime
 
 def get_workouts(start, end, token):
     endomondo = MobileApi(auth_token=token)
@@ -7,6 +8,7 @@ def get_workouts(start, end, token):
 
     data = []
     for w in workouts:
+        w.start_time = w.start_time.replace(tzinfo=timezone.utc)
         if start > w.start_time:
             continue
         data.append(
@@ -21,12 +23,10 @@ def get_workouts(start, end, token):
                 "source": "endomondo",
                 "idle": False,
             })
-    print(data)
     return data
 
 
 if __name__ == '__main__':
-    import datetime
     import sys
     import config
 

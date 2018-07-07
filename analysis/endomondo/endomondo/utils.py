@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from datetime import datetime, tzinfo
+from datetime import datetime, tzinfo,timezone
 import gzip
 from six import StringIO
 from six.moves import xrange
@@ -18,7 +18,7 @@ def datetime_to_str(date):
 		return date
 
 	if date.tzinfo != None:
-		date = date.astimezone(tzinfo('UTC'))
+		date = date.astimezone(timezone.utc)
 	text = date.strftime('%Y-%m-%d %H:%M:%S UTC')
 	return text
 

@@ -7,6 +7,7 @@ from glob import glob
 
 import toggl
 from gcal import Gcal
+import endo
 
 try:
     from . import config
@@ -67,6 +68,7 @@ def main():
     day_filename = os.path.join(config.base_path, date)
     day_start = day
     day_end = now
+    day_length = day_end - day_start
     sleeps = []
     if config.sleep_calendar:
         print("Fetching sleep from Gcal", end='')
@@ -108,6 +110,10 @@ def main():
     times += gcal.events(config.calendars, day_start.isoformat(),
                          day_end.isoformat())
     print(" DONE")
+    if config.endomondo_token:
+        print("Fetching Endomondo", end="")
+        times += endo.get_workouts(day_start, day_end, config.endomondo_token)
+        print(" DONE")
     times += sleeps[1:]
     times = privates(times)
     times.sort(key=lambda x: x["start"])
@@ -115,7 +121,7 @@ def main():
     print("Day {} ({} - {}) {}".format(date,
                                        day_start.strftime("%H:%M"),
                                        day_end.strftime("%H:%M"),
-                                       human_time_diff(day_end - day_start)))
+                                       human_time_diff(day_length)))
     if args.stream:
         print("-" * 10)
         print("STREAM")
@@ -126,10 +132,12 @@ def main():
                   default=json_serialization)
     print("-" * 10)
     print("SUMMARY")
-    logged_time, unknown_time, idle_time = logged_overall(times)
+    logged_time, unknown_time, idle_time, active = logged_overall(times)
+    print(active)
     print("Sleep: {}".format(human_time_diff(
         sum(map(lambda x: x["duration"], sleeps), datetime.timedelta(0)))))
     # todo stats based on day start and end
+    # todo percent
     print("Logged: {}".format(human_time_diff(logged_time)))
     print("Idle: {}".format(human_time_diff(idle_time)))
     print("Unknown: {}".format(human_time_diff(unknown_time)))
@@ -355,25 +363,82 @@ def print_stream(args, times, patterns):
                          idle=record.get("idle", False))))
 
 
-def logged_overall(times):
+def logged_overall(times, day_start=None):
+    device = {}
     # todo per device?
     # todo only active device
     logged_time = datetime.timedelta()
     unknown_time = datetime.timedelta()
     idle_time = datetime.timedelta()
+    active_till = None
     for record in times:
-        if is_none(record):
-            unknown_time += record["duration"]
-        elif record.get("idle", False):
-            idle_time += record["duration"]
+        source = record.get("source", "")
+        idle = record.get("idle", False)
+        unknown = is_none(record)
+
+        # use first, last or day start, end for creating the grid
+        # fill the grid
+        # create structure with all events (start end) with pointers
+        # sort and detect
+
+        # handle sources separately in this loop, simply
+
+        if not idle and not unknown:
+            if active_till:
+                if record["start"] > active_till:
+                    unknown_time += record["start"] - active_till
+                    active_till = record["start"]
+                if record["end"] > active_till:
+                    logged_time += record["end"] - active_till
+                    active_till = record["end"]
+            else:
+                logged_time += record["duration"]
+                active_till = record["end"]
         else:
-            logged_time += record["duration"]
-    return logged_time + idle_time, unknown_time, idle_time
+            if not active_till:
+                # may end sooner
+                if idle:
+                    idle_time += record["duration"]
+                if unknown:
+                    unknown_time += record["duration"]
+
+            # if record["start"] > active_till:
+            #     if idle:
+            #         idle_time +=
+            #     if unknown:
+            #         unknown_time +=
+
+        # if active_till:
+        #     if record["start"] < active_till:
+        #         active = True
+        #     else:
+        #         unknown_time += (record["start"] - active_till)
+        #         active = False
+        #
+        # if not active and unknown:
+        #     # this is not active
+        #     unknown_time += record["duration"]
+        # elif not active and idle:
+        #     idle_time += record["duration"]
+        #     # todo idle per device
+        #     # maybe active somewhere else
+        # else:
+        #     # this is active
+        #     # if source:
+        #     #     if source not in device:
+        #     #         device[source] = datetime.timedelta()
+        #     # device[source] += record["duration"]
+        #     logged_time += record["duration"]
+        #     # add only diff to logged
+        #     active_till = max(active_till, record["end"])
+    return logged_time + idle_time, unknown_time, idle_time, device
 
 
 def is_none(r):
-    return r["source"] == "" and r["item"]["proc"] == "None" and \
-           r["item"]["title"] == ""
+    return r["source"] == "Unknown"
+    # todo not sure what this should detect
+    # return r["source"] == "" and r["item"]["proc"] == "None" and \
+    #        r["item"]["title"] == ""
 
 
 def create_record(start, end, data=None, cnt=1, idle_sum=0, idle=False):
