@@ -7,6 +7,7 @@ from glob import glob
 
 import toggl
 from gcal import Gcal
+from fit import Gfit
 import endo
 
 try:
@@ -63,11 +64,12 @@ def main():
         day = datetime.datetime.strptime(date, "%y-%m-%d")
     day = day.replace(minute=0, hour=0, second=0, tzinfo=tz)
     gcal = Gcal()
+    fit = Gfit()
     yesterday = day + datetime.timedelta(days=-1)
     next_day = day + datetime.timedelta(days=1)
     day_filename = os.path.join(config.base_path, date)
-    day_start = day
-    day_end = now
+    day_start = day.replace(microsecond=1)
+    day_end = now.replace(microsecond=1)
     day_length = day_end - day_start
     sleeps = []
     if config.sleep_calendar:
@@ -76,14 +78,14 @@ def main():
                                 day.isoformat(),
                                 next_day.isoformat())
         if sleeps:
-            day_start = sleeps[0]["end"]
+            day_start = sleeps[0]["end"].replace(microsecond=1)
         if now > next_day and not is_morning:
             next_sleeps = gcal.get_sleep(config.sleep_calendar,
                                          next_day.isoformat(),
                                          (next_day + datetime.timedelta(
                                              days=1)).isoformat())
             if next_sleeps:
-                day_end = next_sleeps[0]["start"]
+                day_end = next_sleeps[0]["start"].replace(microsecond=1)
                 # remove next day sleep if present
                 for s in sleeps:
                     if s["start"] == day_end:
@@ -109,6 +111,9 @@ def main():
     print("Fetching Gcal", end='')
     times += gcal.events(config.calendars, day_start.isoformat(),
                          day_end.isoformat())
+    print(" DONE")
+    print("Fetching Gfit", end='')
+    times += fit.events(day_start.replace(microsecond=1).isoformat(), day_end.isoformat())
     print(" DONE")
     if config.endomondo_token:
         print("Fetching Endomondo", end="")
