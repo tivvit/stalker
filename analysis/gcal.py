@@ -60,13 +60,20 @@ class Gcal(object):
             events.append(self.convert_to_event(ev, cal="Sleep", idle=True))
         return events
 
+    def add_tz(self, val):
+        tz = datetime.datetime.utcnow().astimezone().tzinfo
+        if not val.tzinfo:
+            return val.replace(tzinfo=tz)
+        return val
+
     def convert_to_event(self, cal_event, cal=None, idle=False):
         event_start = cal_event['start'].get('dateTime',
                                              cal_event['start'].get('date'))
-        event_start = ciso8601.parse_datetime(event_start)
+
+        event_start = self.add_tz(ciso8601.parse_datetime(event_start))
         event_end = cal_event['end'].get('dateTime',
                                          cal_event['end'].get('date'))
-        event_end = ciso8601.parse_datetime(event_end)
+        event_end = self.add_tz(ciso8601.parse_datetime(event_end))
         return {
             "item": {
                 "title": cal_event.get("summary", ""),
