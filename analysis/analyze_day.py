@@ -15,6 +15,8 @@ try:
 except:
     import config
 
+PRIVATE_PREFIX = "XX "
+
 
 def main():
     ap = argparse.ArgumentParser()
@@ -113,7 +115,8 @@ def main():
                          day_end.isoformat())
     print(" DONE")
     print("Fetching Gfit", end='')
-    times += fit.events(day_start.replace(microsecond=1).isoformat(), day_end.isoformat())
+    times += fit.events(day_start.replace(microsecond=1).isoformat(),
+                        day_end.isoformat())
     print(" DONE")
     if config.endomondo_token:
         print("Fetching Endomondo", end="")
@@ -562,7 +565,7 @@ def print_tag_summary(summary, tagged, logged_time, args, limit=0, prefix=""):
     print("{}{: <20}\t{: <12}\t{: <8}\t{: <6}\t{: <10}\t{: <10}".format(
         prefix, "tag", "duration", "percent", "cnt", "idle", "idle perc"))
     for t, v in summary:
-        if not args.private and t.startswith("XX "):
+        if not args.private and t.startswith(PRIVATE_PREFIX):
             continue
         duration = v["duration"]
         perc = ((duration + v["idle"]) / logged_time) * 100
@@ -616,12 +619,7 @@ def create_groups(times):
                 "name": last_desc,
                 "group": group,
             }
-            if r["name"].startswith("XX"):
-                r.update({
-                    # remove "XX "
-                    # "name": r["name"][3:],
-                    "private": True,
-                })
+            is_private_group(r)
             out.append(r)
             last_desc = None
             group = []
@@ -640,12 +638,7 @@ def create_groups(times):
                 "name": last_desc,
                 "group": group,
             }
-            if r["name"].startswith("XX"):
-                r.update({
-                    # remove "XX "
-                    # "name": r["name"][3:],
-                    "private": True,
-                })
+            is_private_group(r)
             out.append(r)
             last_desc = i["description"]
             group = []
@@ -662,15 +655,19 @@ def create_groups(times):
             "name": last_desc,
             "group": group,
         }
-        if r["name"].startswith("XX"):
-            r.update({
-                # remove "XX "
-                # "name": r["name"][3:],
-                "private": True,
-            })
+        is_private_group(r)
         out.append(r)
 
     return out
+
+
+def is_private_group(r):
+    if r["name"].startswith(PRIVATE_PREFIX):
+        r.update({
+            # remove "XX "
+            # "name": r["name"][3:],
+            "private": True,
+        })
 
 
 def analyze_groups(groups, patterns):
@@ -710,13 +707,21 @@ def print_group_analysis(groups, args):
 
 def privates(times):
     for r in times:
-        if "description" in r and r["description"].startswith("XX "):
-            r["private"] = True
-        for t in r["tags"]:
-            if t.startswith("XX "):
-                r["private"] = True
-                break
+        is_private(r)
     return times
+
+
+def is_private(r):
+    if "description" in r and r["description"].startswith(PRIVATE_PREFIX):
+        r["private"] = True
+    private_tag(r)
+
+
+def private_tag(r):
+    for t in r["tags"]:
+        if t.startswith(PRIVATE_PREFIX):
+            r["private"] = True
+            break
 
 
 if __name__ == '__main__':
